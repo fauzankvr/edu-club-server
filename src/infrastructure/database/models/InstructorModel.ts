@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document, ObjectId } from "mongoose";
 
 export interface IInstructor extends Document {
+  _id: ObjectId;
   email: string;
   password: string;
   isBlocked: boolean;

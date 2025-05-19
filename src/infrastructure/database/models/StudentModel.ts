@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface IStudents extends Document {
   email: string;
@@ -13,6 +13,7 @@ export interface IStudents extends Document {
   profileImage?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
+  _id: Types.ObjectId;
 }
 
 const StudentsSchema: Schema = new Schema(

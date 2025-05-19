@@ -3,7 +3,7 @@ import { InstructorRepository } from '../../infrastructure/repositories/Instruct
 import { InstructorUseCase } from '../../application/useCase/InstructorUseCase'
 import InstructorController from '../controllers/InstructorController'
 import { upload } from '../../infrastructure/services/multer/multerConfig'
-import { verifyStudent } from '../middlewares/ExtractUser'
+import { verifyInstructor } from '../middlewares/ExtractInstructor'
 
 
 const instructorRepo = new InstructorRepository()
@@ -30,26 +30,31 @@ router.post("/login", (req, res) => {
 router.post("/logout", (req, res) => {
     controller.logOutInstructor(req,res)
 })
-router.get("/profile",verifyStudent,  async (req, res) => {
+router.get("/profile", verifyInstructor, async (req, res) => {
   await controller.getProfile(req, res);
 });
 
 router.put(
   "/profile",
-  verifyStudent,
+  verifyInstructor,
   upload.single("profileImage"),
   async (req, res) => {
     await controller.updateProfile(req, res);
   }
 );
 
-router.post("/createCourse",verifyStudent, upload.single("courseImgeId"), (req, res) => {
-  controller.createCourse(req, res);
-});
+router.post(
+  "/createCourse",
+  verifyInstructor,
+  upload.single("courseImgeId"),
+  (req, res) => {
+    controller.createCourse(req, res);
+  }
+);
 // in your route file
 router.post(
   "/uploadCurriculum/:courseId",
-  verifyStudent,
+  verifyInstructor,
   upload.fields([
     { name: "videos", maxCount: 100 },
     { name: "pdfs", maxCount: 100 },
@@ -68,7 +73,7 @@ router.get("/getCurriculum/:id", (req, res) => {
 
 router.put(
   "/updateCurriculum/:id",
-  verifyStudent,
+  verifyInstructor,
   upload.fields([
     { name: "videos", maxCount: 100 },
     { name: "pdfs", maxCount: 100 },
@@ -81,9 +86,18 @@ router.post("/updateCourse/:id", upload.single("courseImgeId"), (req, res) => {
   controller.updateCourse(req, res);
 });
 
-router.get("/getAllCourses", verifyStudent, (req, res) => {
+router.get("/getAllCourses", verifyInstructor, (req, res) => {
   controller.getAllCoureses(req, res);
 });
+router.get("/getAllChats",verifyInstructor, (req, res) => {
+  controller.getAllChats(req, res) 
+})
+router.get("/getMessages/:id", verifyInstructor, (req, res) => {
+  controller.getAllMessage(req, res);
+});
 
+router.post("/postMessage", verifyInstructor, (req, res) => {
+  controller.postMessage(req, res);
+});
 
 export default router

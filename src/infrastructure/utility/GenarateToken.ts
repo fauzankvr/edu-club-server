@@ -6,7 +6,7 @@ const REFRESH_SECRET = process.env.REFRESH_SECRET || "refreshsecret#123";
 
 // Generate Access Token
 export const generateAccessToken = (
-  payload: { email: string; _id?: string },
+  payload: { email: string; id?: string },
   expiresIn: number = 15 * 60 // 15 minutes
 ): string => {
   const options: SignOptions = { expiresIn };
@@ -15,7 +15,7 @@ export const generateAccessToken = (
 
 // Generate Refresh Token
 export const generateRefreshToken = (
-  payload: { email: string; _id?: string },
+  payload: { email: string; id?: string },
   expiresIn: number = 7 * 24 * 60 * 60 // 7 days
 ): string => {
   const refreshPayload = { ...payload, id: uuidv4() }; 

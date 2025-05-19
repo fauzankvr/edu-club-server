@@ -8,6 +8,7 @@ import { generateOtp } from "../../infrastructure/utility/GenerateOtp";
 import IInstructorRepo from "../interface/IInstructorRepo";
 import bcrypt from 'bcrypt'
 import { ISection } from "../../infrastructure/database/models/CarriculamModel";
+import { IInstructor } from "../../infrastructure/database/models/InstructorModel";
 
 
 export interface CreateCourseDTO {
@@ -33,7 +34,7 @@ export class InstructorUseCase {
     const decoded = verifyRefreshToken(refreshToken);
     const accessToken = generateAccessToken({
       email: decoded.email,
-      _id: decoded._id,
+      id: decoded.id,
     });
     return accessToken;
   }
@@ -63,16 +64,20 @@ export class InstructorUseCase {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newInstructor = new Instructor(email, hashedPassword, false);
-    const createdStudent = await this.instructorRepo.crateInstructor(
+    const createdInstructor = (await this.instructorRepo.crateInstructor(
       newInstructor
-    );
+    )) as IInstructor;
     await this.instructorRepo.deleteOtp(email);
 
-    if (!createdStudent) {
+    if (!createdInstructor) {
       throw new Error("Issue faced while saving student in DB");
     }
 
-    const payload = { email };
+    const id = createdInstructor?._id?.toString();
+    console.log("created instructor", createdInstructor);
+    console.log("id", id);
+    // Generate tokens
+    const payload = { email, id };
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
@@ -158,8 +163,7 @@ export class InstructorUseCase {
     }
   }
 
-
-  async getProfile(email: any) {
+  async getProfile(email: any): Promise<IInstructor> {
     const instructorData = await this.instructorRepo.findInstrucotrByEmail(
       email
     );
@@ -220,5 +224,31 @@ export class InstructorUseCase {
     }
 
     return curriculum;
+  }
+  async getAllChats(id: string) {
+    const chats = await this.instructorRepo.getAllChats(id);
+    if (!chats) {
+      throw new Error("Failed to retrieve chats");
+    }
+    return chats;
+  }
+  async getAllMessages(id: string) {
+    const messages = this.instructorRepo.getAllMessages(id);
+    if (!messages) {
+      throw new Error("Failed to retrieve messages");
+    }
+    return messages;
+  }
+  postMessage(chatId: string, text: string, id: string) {
+    const data = {
+      text,
+      sender: id,
+      chatId,
+    };
+    const chat = this.instructorRepo.postMessage(data);
+    if (!chat) {
+      throw new Error("Failed to post message");
+    }
+    return chat;
   }
 }

@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { InstructorUseCase } from "../../application/useCase/InstructorUseCase";
 import { generateAccessToken, verifyRefreshToken } from "../../infrastructure/utility/GenarateToken";
-import { IAuthanticatedRequest } from "../middlewares/ExtractUser";
 import { JwtPayload } from "jsonwebtoken";
+import { IAuthenticatedRequest } from "../middlewares/ExtractInstructor";
+import { IInstructor } from "../../infrastructure/database/models/InstructorModel";
 
 
 
@@ -137,8 +138,8 @@ class InstructorController {
     }
   };
 
-  createCourse = async (req: IAuthanticatedRequest, res: Response) => {
-    const instructor = (req.student as JwtPayload)?.email;
+  createCourse = async (req: IAuthenticatedRequest, res: Response) => {
+    const instructor = (req.instructor as JwtPayload)?.email;
     console.log(instructor);
     console.log("i am in create couser");
     try {
@@ -180,9 +181,9 @@ class InstructorController {
     }
   };
 
-  uploadCurriculum = async (req: IAuthanticatedRequest, res: Response) => {
+  uploadCurriculum = async (req: IAuthenticatedRequest, res: Response) => {
     try {
-      const instructor = (req.student as JwtPayload)?.email;
+      const instructor = (req.instructor as JwtPayload)?.email;
       const courseId = req.params.courseId;
 
       const sections = JSON.parse(req.body.sections || "[]");
@@ -194,12 +195,6 @@ class InstructorController {
 
       const videoFiles = files.videos || [];
       const pdfFiles = files.pdfs || [];
-
-      // Debug logs
-      console.log("Instructor:", instructor);
-      console.log("Sections:", sections);
-      console.log("Video Files:", videoFiles);
-      console.log("PDF Files:", pdfFiles);
 
       // Now you can pass them to your use case or save in DB
       const curriculum = await this.InstructorUseCase.saveCurriculum(
@@ -221,9 +216,9 @@ class InstructorController {
     }
   };
 
-  updateCurriculum = async (req: IAuthanticatedRequest, res: Response) => {
+  updateCurriculum = async (req: IAuthenticatedRequest, res: Response) => {
     try {
-      const instructor = (req.student as JwtPayload)?.email;
+      const instructor = (req.instructor as JwtPayload)?.email;
       const courseId = req.params.id;
       const sections = JSON.parse(req.body.sections || "[]");
 
@@ -234,12 +229,6 @@ class InstructorController {
 
       const videoFiles = files?.videos || [];
       const pdfFiles = files?.pdfs || [];
-
-      // Logging
-      console.log("Instructor:", instructor);
-      console.log("Sections:", sections);
-      console.log("Video Files:", videoFiles);
-      console.log("PDF Files:", pdfFiles);
 
       const result = await this.InstructorUseCase.saveCurriculum(
         courseId,
@@ -265,16 +254,14 @@ class InstructorController {
     }
   };
 
-  getProfile = async (req: IAuthanticatedRequest, res: Response) => {
+  getProfile = async (req: IAuthenticatedRequest, res: Response) => {
     try {
       console.log("iam in profile");
-      const student = req.student;
+      const student = req.instructor;
 
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error("Invalid token payload: Email not found");
       }
-
-      console.log("My email:", student.email);
       const result = await this.InstructorUseCase.getProfile(student.email);
       res.status(200).json({ profile: result });
     } catch (error) {
@@ -282,11 +269,10 @@ class InstructorController {
       res.status(500).json({ message: "Something went wrong" });
     }
   };
-  updateProfile = async (req: IAuthanticatedRequest, res: Response) => {
+  updateProfile = async (req: IAuthenticatedRequest, res: Response) => {
     try {
       console.log("iam in update profile");
-      const student = req.student;
-      console.log(student);
+      const student = req.instructor;
       const updateData = req.body;
       console.log(req.body);
       if (!student || typeof student === "string" || !("email" in student)) {
@@ -296,7 +282,6 @@ class InstructorController {
         updateData.profileImage = req.file.filename;
       }
 
-      console.log("My email:", student.email);
       const result = this.InstructorUseCase.updateProfile(
         student.email,
         updateData
@@ -343,9 +328,9 @@ class InstructorController {
       });
     }
   };
-  getAllCoureses = async (req: IAuthanticatedRequest, res: Response) => {
+  getAllCoureses = async (req: IAuthenticatedRequest, res: Response) => {
     try {
-      const instructor = req.student;
+      const instructor = req.instructor;
       console.log("i am in get alll coursss");
 
       if (
@@ -379,6 +364,82 @@ class InstructorController {
         .json({ message: "Failed to fetch curriculum", error: error.message });
     }
   };
+  getAllChats = async (req: IAuthenticatedRequest, res: Response) => {
+    try {
+      const instructor = req.instructor;
+      console.log("i am in get all chats");
+
+      if (
+        !instructor ||
+        typeof instructor === "string" ||
+        !("email" in instructor)
+      ) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+
+      const email = instructor.email;
+      const InstructorData = this.InstructorUseCase.getProfile(email);
+      if (!InstructorData) {
+        return res.status(404).json({ message: "Instructor not found" });
+      }
+      const id = (await InstructorData)._id.toString();
+      const chats = await this.InstructorUseCase.getAllChats(id);
+      res.status(200).json({ success: true, data: chats });
+    } catch (error) {
+      console.log(error);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to fetch chats" });
+    }
+  };
+  getAllMessage = async (req: Request, res: Response) => {
+    try {
+      const chatId = req.params.id;
+      const messages = await this.InstructorUseCase.getAllMessages(chatId);
+      return res.status(200).json(messages);
+    } catch (error: any) {
+      console.error("Error in getAllMessage:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to fetch messages", error: error.message });
+    }
+  }
+  postMessage = async (req: IAuthenticatedRequest, res: Response) => {
+    try {
+      console.log("in post message")
+      const { chatId, text } = req.body;
+      const instructor = req.instructor;
+
+      if (
+        !instructor ||
+        typeof instructor === "string" ||
+        !("email" in instructor)
+      ) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+
+      const email = instructor.email;
+      const InstructorData = this.InstructorUseCase.getProfile(email);
+      if (!InstructorData) {
+        return res.status(404).json({ message: "Instructor not found" });
+      }
+      const id = (await InstructorData)._id.toString();
+      if (!instructor || typeof instructor === "string") {
+        throw new Error("Invalid token payload: Email not found");
+      }
+      const message = await this.InstructorUseCase.postMessage(
+        chatId,
+        text,
+        id
+      );
+      return res.status(200).json(message);
+    } catch (error: any) {
+      console.error("Error in postMessage:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to send message", error: error.message });
+    }
+  }
 }
 
 

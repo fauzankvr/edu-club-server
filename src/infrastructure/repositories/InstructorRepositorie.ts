@@ -6,6 +6,8 @@ import CourseModal, {ICourse} from "../database/models/CourseModel";
 import { CreateCourseDTO } from "../../application/useCase/InstructorUseCase";
 import { ISection } from "../database/models/CarriculamModel";
 import CurriculumModel from "../database/models/CarriculamModel";
+import { ChatModel } from "../database/models/ChatModel";
+import { MessageModel } from "../database/models/MessageModel";
 
 
 export class InstructorRepository implements IInstructorRepo {
@@ -26,6 +28,10 @@ export class InstructorRepository implements IInstructorRepo {
   async saveOtp(email: string, otp: string): Promise<object> {
     const otpData = await InstructorOtpModal.create({ email, otp });
     return otpData;
+  }
+  async findById(id: string): Promise<IInstructor | null>{
+    const instructor = await InstructorModal.findById(id)
+    return instructor
   }
   async findInstrucotrByEmail(email: string): Promise<IInstructor | null> {
     const instructorData = await InstructorModal.findOne({ email });
@@ -162,5 +168,60 @@ export class InstructorRepository implements IInstructorRepo {
       console.error("Error retrieving curriculum:", error);
       throw new Error("Failed to retrieve curriculum");
     }
+  }
+  async getAllChats(id: string): Promise<any[]> {
+    try {
+      const chats = await ChatModel.aggregate([
+        { $match: { instructorId: id } },
+
+        // Convert userId (string) to ObjectId
+        {
+          $addFields: {
+            userIdObj: {
+              $convert: {
+                input: "$userId",
+                to: "objectId",
+                onError: null,
+                onNull: null,
+              },
+            },
+          },
+        },
+        // Lookup to get student details
+        {
+          $lookup: {
+            from: "students",
+            localField: "userIdObj",
+            foreignField: "_id",
+            as: "studentDetails",
+          },
+        },
+        // Unwind the studentDetails array
+        {
+          $unwind: {
+            path: "$studentDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+      ]);
+      return chats;
+    }catch (error) {
+      console.error("Error retrieving chats:", error);
+      throw new Error("Failed to retrieve chats");
+    }
+  }   
+  getAllMessages(id: string): Promise<any[]> {
+    const messages = MessageModel.find({ chatId: id });
+    if (!messages) {
+      throw new Error("Failed to retrieve messages");
+    } 
+    return messages;
+  }
+  postMessage(data: object): Promise<any> {
+    const message = MessageModel.create(data);
+    if (!message) {
+      throw new Error("Failed to post message");
+    }
+    return message; 
   }
 }

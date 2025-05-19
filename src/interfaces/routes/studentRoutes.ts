@@ -5,10 +5,25 @@ import { StudentRepository } from "../../infrastructure/repositories/StudentRepo
 import { verifyStudent } from "../middlewares/ExtractUser";
 import { upload } from "../../infrastructure/services/multer/multerConfig";
 
+import { MongoChatRepository } from "../../infrastructure/repositories/ChatRepository";
+import { ChatUseCase } from "../../application/useCase/ChatUsecase";
+import { InstructorRepository } from "../../infrastructure/repositories/InstructorRepositorie";
+import { ChatController } from "../controllers/ChatController";
+
 // Create dependencies
 const studentRepo = new StudentRepository();
 const studentUseCase = new StudentUseCase(studentRepo);
 const controller = new StudentController(studentUseCase);
+
+const instrucotRepo = new InstructorRepository()
+const chatMessageRepository = new MongoChatRepository();
+const chatUseCase = new ChatUseCase(
+  chatMessageRepository,
+  studentRepo,
+  instrucotRepo
+);
+const chatController = new ChatController(chatUseCase);
+
 
 const router = express.Router();
 
@@ -57,12 +72,100 @@ router.get("/student/getAllCourses",async (req, res) => {
   await controller.getAllCoureses(req,res)
 })
 
-router.post("/student/orders", async (req, res) => {
+router.get("/student/getCourse/:courseId",async (req, res) => {
+  await controller.getCourseById(req,res)
+});
+
+router.post("/student/orders",verifyStudent, async (req, res) => {
   await controller.createOrderController(req, res);
 });
-router.post("/student/orders/:orderId/capture", async (req, res) => {
-  await controller.captureOrderController(req, res)
+router.post("/student/orders/capture/:orderId",async (req, res) => {
+  await controller.captureOrderController(req, res);
+});
+
+router.get("/student/order/success/:orderId", async (req, res) => {
+  await controller.getCourseByOrderId(req, res);
+});
+router.get("/student/course/fullcourse/:orderId", async (req, res) => {
+  await controller.getFullCourse(req,res)
+});
+
+router.post(
+  "/student/course/:courseId/review",
+  verifyStudent,
+  async (req, res) => {
+    await controller.addReview(req, res);
+  }
+);
+
+router.get("/student/course/:courseId/reviews", async (req, res) => {
+  await controller.getReview(req, res);
+});
+router.patch("/student/:reviewId/reaction", verifyStudent, async (req, res) => {
+  await controller.addReaction(req,res)
 })
+
+router.get(
+  "/student/course/myReview/:courseId",
+  verifyStudent,
+  async (req, res) => {
+    await controller.getMyReview(req, res);
+  }
+);
+
+router.post("/student/course/:courseId/wishlist",verifyStudent, async (req, res) => {
+  await controller.addWishlist(req, res);
+})
+
+router.get("/student/course/wishlist", verifyStudent, async (req, res) => {
+  await controller.getWishlist(req, res);
+});
+
+router.get("/student/courses/enrolled", verifyStudent, async (req, res) => {
+  await controller.getEnrolledCourses(req, res);
+});
+
+router.get("/student/getCurriculum/:courseId", async(req, res) => {
+  await controller.getCarriculam(req, res);
+});
+
+router.post("/student/gemini/chat", async (req, res) => {
+  await controller.geminiChat(req,res)
+})
+
+router.post("/student/discussion/:id", async (req, res) => {
+  await controller.createDiscussion(req,res)
+});
+
+router.get("/student/discussion/:id", async (req, res) => {
+ await controller.getAllDiscussion(req,res)
+})
+
+router.post("/student/:id/react", async (req, res) => {
+  await controller.createReact(req,res)
+});
+
+router.post("/student/discussion/:id/reply",verifyStudent, async (req, res) => {
+  await controller.createReplay(req, res)
+})
+
+router.get("/student/discussion/replay/:id", async (req, res) => {
+  await controller.getReplay(req,res)
+});
+
+///chat routes
+
+router.post("/student/chat", (req, res) => chatController.createChat(req, res));
+router.get("/student/chat/user/:userId", (req, res) =>
+  chatController.getUserChats(req, res)
+);
+router.get("/instructor/chat/:instructorId", (req, res) =>
+  chatController.getInstructorChats(req, res)
+);
+router.post("/chat/message", (req, res) => chatController.sendMessage(req, res));
+router.get("/chat/messages/:chatId", (req, res) =>
+  chatController.getChatMessages(req, res)
+);
 
 
 export default router;

@@ -3,6 +3,8 @@ import { Request, Response } from "express";
 import { IAuthanticatedRequest } from "../middlewares/ExtractUser";
 import { generateAccessToken, verifyRefreshToken } from "../../infrastructure/utility/GenarateToken";
 import { captureOrderService, createOrderService } from "../../infrastructure/services/PaypalIntigrataion";
+import { IStudents } from "../../infrastructure/database/models/StudentModel";
+import { IReply } from "../../application/interface/IDiscussion";
 
 class StudentController {
   constructor(private StudentUseCase: StudentUseCase) {}
@@ -185,16 +187,63 @@ class StudentController {
       res.status(500).json({ message: "Failed to fetch courses" });
     }
   };
+  getCourseById = async (req: Request, res: Response) => {
+    try {
+      const { courseId } = req.params;
+      const course = await this.StudentUseCase.getCourseById(courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      return res.status(200).json({ course });
+    } catch (error) {
+      console.error("Error fetching course:", error);
+      res.status(500).json({ message: "Failed to fetch course" });
+    }
+  };
+
+  getCourseByOrderId = async (req: Request, res: Response) => {
+    try {
+      const { orderId } = req.params;
+      const course = await this.StudentUseCase.getCourseByOrderId(orderId);
+      if (!course) {
+        return res
+          .status(404)
+          .json({ message: "Course not found for this order" });
+      }
+      return res.status(200).json({ course });
+    } catch (error) {
+      console.error("Error fetching course by order ID:", error);
+      res.status(500).json({ message: "Failed to fetch course by order ID" });
+    }
+  };
+
+  getFullCourse = async (req: Request, res: Response) => {
+    try {
+      const { orderId } = req.params;
+      const course = await this.StudentUseCase.getCourseByOrderId(orderId);
+      if (!course) {
+        return res
+          .status(404)
+          .json({ message: "Course not found for this order" });
+      }
+      const carriculam = await this.StudentUseCase.getCarriculam(course._id);
+      return res.status(200).json({ course, carriculam });
+    } catch (error) {
+      console.error("Error fetching course by order ID:", error);
+      res.status(500).json({ message: "Failed to fetch course by order ID" });
+    }
+  };
 
   updateProfile = async (req: IAuthanticatedRequest, res: Response) => {
     try {
       console.log("iam in update profile");
       const student = req.student;
       const updateData = req.body;
+      // const imageUrl = req.file?.path;
       if (req.file) {
         updateData.profileImage = req.file.filename;
+        // updateData.profileImage = imageUrl;
       }
-      console.log(req.body);
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error("Invalid token payload: Email not found");
       }
@@ -211,32 +260,339 @@ class StudentController {
     }
   };
 
-  createOrderController = async (req: Request, res: Response) => {
+  createOrderController = async (req: IAuthanticatedRequest, res: Response) => {
     try {
-      console.log(" iama in craete order")
+      console.log("I am in create order...");
       const { cart } = req.body;
-      const { jsonResponse, httpStatusCode } = await createOrderService(cart);
-      res.status(httpStatusCode).json(jsonResponse);
-    } catch (error) {
-      console.error("Failed to create order:", error);
-      res.status(500).json({ error: "Failed to create order." });
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+      const userEmail = student.email;
+
+      const { orderId, status } = await createOrderService(cart, userEmail);
+
+      res.status(200).json({ orderId, status });
+    } catch (error: any) {
+      console.error("Failed to create order:", error.message);
+      res.status(500).json(error.message);
     }
   };
 
   captureOrderController = async (req: Request, res: Response) => {
     try {
-      console.log( 'i am in capurrte....')
-      const { orderID } = req.params;
-      const { jsonResponse, httpStatusCode } = await captureOrderService(
-        orderID
+      console.log("I am in capture...");
+      const { orderId } = req.params;
+      const { message, captureId, orderID1 } = await captureOrderService(
+        orderId
       );
-      res.status(httpStatusCode).json(jsonResponse);
-    } catch (error) {
-      console.error("Failed to capture order:", error);
+
+      res.status(200).json({ message, captureId, orderID1 });
+    } catch (error: any) {
+      console.error("Failed to capture order:", error.message);
       res.status(500).json({ error: "Failed to capture order." });
     }
   };
-};
 
+  addReview = async (req: IAuthanticatedRequest, res: Response) => {
+    try {
+      const { rating, comment } = req.body;
+      const { courseId } = req.params;
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+
+      const studentData = await this.StudentUseCase.getProfile(student.email);
+
+      if (!studentData.email || !studentData.firstName) {
+        throw new Error("Student data not found");
+      }
+
+      const newReview = await this.StudentUseCase.addReview(
+        studentData.email,
+        studentData.firstName,
+        courseId,
+        rating,
+        comment
+      );
+
+      return res
+        .status(201)
+        .json({ message: "Review added successfully", review: newReview });
+    } catch (error: any) {
+      console.error("Error adding review:", error.message);
+      return res.status(500).json({ message: "Failed to add review" });
+    }
+  };
+
+  getReview = async (req: Request, res: Response) => {
+    try {
+      const { courseId } = req.params;
+
+      const reviews = await this.StudentUseCase.getReview(courseId);
+
+      return res.status(200).json({ reviews });
+    } catch (error: any) {
+      console.error("Error fetching reviews:", error.message);
+      return res.status(500).json({ message: "Failed to fetch reviews" });
+    }
+  };
+
+  addReaction = async (req: IAuthanticatedRequest, res: Response) => {
+    try {
+      const { reviewId } = req.params;
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+      const type = req.body.type;
+      console.log("type likeor dis", type);
+      const reviews = await this.StudentUseCase.handleReviewReaction(
+        reviewId,
+        student.email,
+        type
+      );
+
+      return res.status(200).json({ reviews });
+    } catch (error: any) {
+      console.error("Error fetching reviews:", error.message);
+      return res.status(500).json({ message: "Failed to fetch reviews" });
+    }
+  };
+
+  getMyReview = async (req: IAuthanticatedRequest, res: Response) => {
+    try {
+      const { courseId } = req.params;
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+
+      const myReview = await this.StudentUseCase.getMyReview(
+        courseId,
+        student.email
+      );
+
+      return res.status(200).json({ myReview });
+    } catch (error: any) {
+      console.error("Error fetching review:", error.message);
+      return res.status(500).json({ message: "Failed to fetch reviews" });
+    }
+  };
+
+  addWishlist = async (req: IAuthanticatedRequest, res: Response) => {
+    try {
+      const { courseId } = req.params;
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+      const isAdded = await this.StudentUseCase.findWishlist(
+        student.email,
+        courseId
+      );
+      if (isAdded) {
+        throw new Error("You alredy added this course");
+      }
+      const result = await this.StudentUseCase.addWishlist(
+        student.email,
+        courseId
+      );
+
+      return res
+        .status(200)
+        .json({ success: true, message: "Added to wishlist", data: result });
+    } catch (error: any) {
+      console.error("Error adding to wishlist:", error.message);
+      return res.status(500).json({ message: "Failed to add to wishlist" });
+    }
+  };
+  getWishlist = async (req: IAuthanticatedRequest, res: Response) => {
+    try {
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+
+      const wishlist = await this.StudentUseCase.getWishlist(student.email);
+
+      return res.status(200).json({ success: true, wishlist });
+    } catch (error: any) {
+      console.error("Error fetching wishlist:", error.message);
+      return res.status(500).json({ message: "Failed to fetch wishlist" });
+    }
+  };
+
+  getEnrolledCourses = async (req: IAuthanticatedRequest, res: Response) => {
+    try {
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+
+      // Call use case to get enrolled courses
+      const enrolledCourses = await this.StudentUseCase.getEnrolledCourses(
+        student.email
+      );
+
+      return res.status(200).json({ success: true, enrolledCourses });
+    } catch (error: any) {
+      console.error("Error fetching enrolled courses:", error.message);
+      return res
+        .status(500)
+        .json({ message: "Failed to fetch enrolled courses" });
+    }
+  };
+
+  getCarriculam = async (req: Request, res: Response) => {
+    try {
+      const courseId = req.params.courseId;
+      if (!courseId) {
+        return res.status(400).json({ message: "Course ID is required" });
+      }
+
+      // Call use case to get curriculum
+      const curriculum = await this.StudentUseCase.getCarriculamTopics(
+        courseId
+      );
+
+      if (!curriculum) {
+        return res
+          .status(404)
+          .json({ message: "Curriculum not found for this course" });
+      }
+
+      return res.status(200).json({ success: true, curriculum });
+    } catch (error: any) {
+      console.error("Error fetching curriculum:", error.message);
+      return res.status(500).json({ message: "Failed to fetch curriculum" });
+    }
+  };
+
+  geminiChat = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { message } = req.body;
+      console.log(message, "message");
+
+      if (!message) {
+        res
+          .status(400)
+          .json({ success: false, message: "Message is required" });
+        return;
+      }
+
+      const response = await this.StudentUseCase.runChat(message);
+      res.status(200).json({ success: true, response });
+    } catch (error: any) {
+      console.error("Error in geminiChat:", error.message);
+      res
+        .status(500)
+        .json({ success: false, message: "Internal Server Error" });
+    }
+  };
+
+  // Disscussion
+
+  createDiscussion = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const orderId = req.params.id
+      const data = await this.StudentUseCase.createDiscussion(
+        orderId,
+        req.body.text
+      );
+      res.status(201).json({
+        success: true,
+        data,
+      });
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      console.error("Error in createDiscussion:", errorMessage);
+      res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+      });
+    }
+  };
+
+  getAllDiscussion = async (req: Request, res: Response): Promise<void> => {
+    try {
+      let orderId = req.params.id
+      const discussions = await this.StudentUseCase.getAllDiscussions(orderId);
+      res.status(200).json({
+        success: true,
+        data: discussions,
+      });
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      console.error("Error in getAllDiscussion:", errorMessage);
+      res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+      });
+    }
+  };
+  createReact = async (req: Request, res: Response) => {
+    const { type } = req.body;
+
+    if (!["like", "dislike"].includes(type)) {
+      return res.status(400).json({ error: "Invalid reaction type" });
+    }
+    const data = await this.StudentUseCase.createReact(req.params.id, type);
+    res.json(data);
+  };
+  createReplay = async (req: IAuthanticatedRequest, res: Response) => {
+     try {
+       const student = req.student;
+       if (!student || typeof student === "string" || !("email" in student)) {
+         throw new Error("Invalid token payload: Email not found");
+       }
+       const studentData = await this.StudentUseCase.getProfile(student.email);
+       const userId = studentData._id
+       if (!studentData||!userId) {
+         throw new Error("not get student Data")
+       }
+       const discussionId = req.params.id;
+       const { text } = req.body;
+
+       if (!text)
+         return res.status(400).json({ message: "Reply text is required" });
+
+       const reply: IReply = {
+         discussionId,
+         userId,
+         text,
+         likes: 0,
+         dislikes: 0,
+         likedBy: [],
+         dislikedBy: [],
+         createdAt: new Date(),
+       };
+
+       const updatedDiscussion = await this.StudentUseCase.addReply(
+         discussionId,
+         reply
+       );
+       return res
+         .status(200)
+         .json({ message: "Reply added", data: updatedDiscussion });
+     } catch (err: any) {
+       return res.status(500).json({ message: err.message });
+     }
+  }
+
+  getReplay = async (req: Request, res: Response)=>{
+    try {
+      const discussionId = req.params.id;
+      const replies = await this.StudentUseCase.getReplay(discussionId);
+      return res.status(200).json(replies);
+    } catch (error: any) {
+      console.error("Error fetching replies:", error);
+      return res.status(500).json({ message: error.message || "Server error" });
+    }
+  }
+}
 
 export default StudentController

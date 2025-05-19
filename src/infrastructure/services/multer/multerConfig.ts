@@ -1,6 +1,7 @@
 import multer, { FileFilterCallback } from "multer";
 import path from "path";
 import { Request } from "express";
+// import { storage } from "../../utility/cloudinay";
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
@@ -24,5 +25,6 @@ const fileFilter = (
   if (isValid) cb(null, true);
   else cb(new Error("Only JPEG/PNG files are allowed"));
 };
+
 
 export const upload = multer({ storage, fileFilter });

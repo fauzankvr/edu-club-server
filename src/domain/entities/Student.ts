@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import { SafeStudent } from "./SafeStudent";
 
 export class Student {
@@ -13,7 +14,8 @@ export class Student {
     public googleId?: string | null,
     public profileImage?: string | null,
     public createdAt: Date = new Date(),
-    public updatedAt?: Date
+    public updatedAt?: Date,
+    public _id?:Types.ObjectId,
   ) {}
 
   getFullName(): string {

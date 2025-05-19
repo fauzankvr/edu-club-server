@@ -6,6 +6,9 @@ import studentRoutes from "./interfaces/routes/studentRoutes";
 import InstructorRoutes from "./interfaces/routes/instructorRoutes"
 import AdminRoutes from "./interfaces/routes/adminRoutes"
 import cookieParser from "cookie-parser";
+import http from "http";
+import { Server } from "socket.io";
+import { setupSocket } from "./infrastructure/services/websoket";
 
 dotenv.config();
 const app: Application = express();
@@ -37,7 +40,7 @@ import path from "path";
 
 const limiter = rateLimit({
   windowMs: 2 * 60 * 1000, // 10 minutes
-  max: 20, // Limit each IP to 5 requests per windowMs
+  max: 50, 
   message: {
     success: false,
     message: "Too many requests. Please try again later.",
@@ -52,6 +55,18 @@ app.use(limiter)
 app.use(express.json());
 app.use(cookieParser());
 
+// soket.io
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
+setupSocket(io);
+
+
 // Routes
 app.use("/instructor", InstructorRoutes);
 app.use("/admin", AdminRoutes);
@@ -61,7 +76,7 @@ const PORT = process.env.PORT || 5000;
 
 connectDB()
   .then(() => {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch((error) => {
     console.error("Database connection failed:", error);
