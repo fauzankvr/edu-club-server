@@ -43,6 +43,10 @@ router.post("/student/login", (req, res) => {
   controller.loginStudent(req, res);
 });
 
+router.post("/student/google-login", (req, res) => {
+  controller.googleLoginController(req, res);
+});
+
 router.get("/student", verifyStudent, (req, res) => {
   controller.getStudent(req,res)
 })
@@ -116,6 +120,14 @@ router.get(
 router.post("/student/course/:courseId/wishlist",verifyStudent, async (req, res) => {
   await controller.addWishlist(req, res);
 })
+
+router.delete(
+  "/student/course/:courseId/wishlist",
+  verifyStudent,
+  async (req, res) => {
+    await controller.removeWishlist(req, res);
+  }
+);
 
 router.get("/student/course/wishlist", verifyStudent, async (req, res) => {
   await controller.getWishlist(req, res);

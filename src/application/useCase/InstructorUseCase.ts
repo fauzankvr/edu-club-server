@@ -88,9 +88,11 @@ export class InstructorUseCase {
     const InstrucotrData = await this.instructorRepo.findSafeInstructorByEmail(
       email
     );
-    console.log("std", InstrucotrData);
     if (!InstrucotrData) {
-      throw new Error("Student not found");
+      throw new Error("Instructor not found");
+    }
+    if (InstrucotrData.IsBlocked) {
+      throw new Error("Instructor is blocked");
     }
     const isMatch = await bcrypt.compare(password, InstrucotrData.password);
     if (!isMatch) {
@@ -146,9 +148,9 @@ export class InstructorUseCase {
           );
 
           if (videoFile) {
-            lecture.videoPath = videoFile.filename;
+            lecture.videoPath = videoFile.path;
           } else if (pdfFile) {
-            lecture.pdfPath = pdfFile.filename;
+            lecture.pdfPath = pdfFile.path;
           }
         });
       });

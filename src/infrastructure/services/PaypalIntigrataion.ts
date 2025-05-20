@@ -10,15 +10,16 @@ import Course, { ICourse } from "../database/models/CourseModel";
 import OrderModel from "../database/models/OrderModel";
 import StudentModel, { IStudents } from "../database/models/StudentModel";
 import { ObjectId } from "mongoose";
+import { WishlistModel } from "../database/models/WishlistModel";
 
+// Load PayPal environment variables
 const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
-let orderId = "";
 
 if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
   throw new Error("Missing PayPal environment variables");
 }
 
-// Create PayPal client
+// Initialize PayPal client
 const client = new Client({
   clientCredentialsAuthCredentials: {
     oAuthClientId: PAYPAL_CLIENT_ID,
@@ -35,20 +36,17 @@ const client = new Client({
 const ordersController = new OrdersController(client);
 
 // Create a new PayPal Order and save in DB
-export const createOrderService = async (cart: any, userEmail:string) => {
+export const createOrderService = async (cart: any, userEmail: string) => {
+  // Validate cart input
   if (!cart || !Array.isArray(cart) || !cart.length) {
     throw new Error("Invalid cart data");
   }
 
+  // Fetch course
   const course = (await Course.findById(cart[0].id)) as ICourse;
   if (!course) throw new Error("Course not found");
-  const myCourse = await OrderModel.findOne({
-    courseId: cart[0].id
-  })
-  if (myCourse) {
-    throw new Error("you alredy purchased")
-  }
 
+  // Fetch user
   const user = (await StudentModel.findOne({ email: userEmail })) as
     | (Document & IStudents & { _id: ObjectId })
     | null;
@@ -58,6 +56,56 @@ export const createOrderService = async (cart: any, userEmail:string) => {
   const quantity = cart[0].quantity || 1;
   const priceUSD = course.price.toFixed(2);
 
+  // Check if course is already purchased
+  const paidOrder = await OrderModel.findOne({
+    courseId: course.id,
+    userId,
+    status: "PAID",
+  });
+  if (paidOrder) {
+    throw new Error("You already purchased this course");
+  }
+
+  // Check for existing pending order
+  const existingPendingOrder = await OrderModel.findOne({
+    courseId: course.id,
+    userId,
+    status: "PENDING",
+  });
+
+  if (existingPendingOrder) {
+    try {
+      // Verify the order with PayPal
+      const { body } = await ordersController.getOrder({
+        id: existingPendingOrder.paypalOrderId,
+      });
+      const orderDetails = typeof body === "string" ? JSON.parse(body) : body;
+
+      // Check if the order is still valid (CREATED or APPROVED)
+      if (
+        orderDetails.status === "CREATED" ||
+        orderDetails.status === "APPROVED"
+      ) {
+        return {
+          orderId: existingPendingOrder.paypalOrderId,
+          status: "PENDING (Already Exists)",
+        };
+      } else {
+        // Delete invalid or expired order
+        await OrderModel.deleteOne({
+          paypalOrderId: existingPendingOrder.paypalOrderId,
+        });
+      }
+    } catch (error) {
+      // Delete invalid order if PayPal API call fails
+      await OrderModel.deleteOne({
+        paypalOrderId: existingPendingOrder.paypalOrderId,
+      });
+
+    }
+  }
+
+  // Create new PayPal order
   const orderBody = {
     body: {
       intent: CheckoutPaymentIntent.Capture,
@@ -96,9 +144,10 @@ export const createOrderService = async (cart: any, userEmail:string) => {
 
     if (typeof body === "string") {
       const jsonResponse = JSON.parse(body);
-
       if (!jsonResponse.id) throw new Error("No PayPal order ID received");
-      orderId = jsonResponse.id;
+
+      const orderId = jsonResponse.id;
+
       // Save the order in the database
       await OrderModel.create({
         userId,
@@ -108,9 +157,11 @@ export const createOrderService = async (cart: any, userEmail:string) => {
         status: "PENDING",
         priceUSD: parseFloat(priceUSD),
       });
-      console.log("oder id in ceate order ", jsonResponse.id);
+
+
+
       return {
-        orderId: jsonResponse.id,
+        orderId,
         status: "PENDING",
       };
     } else {
@@ -129,6 +180,7 @@ export const captureOrderService = async (orderID: string) => {
   }
 
   try {
+    // Capture the order
     const { body } = await ordersController.captureOrder({
       id: orderID,
       prefer: "return=minimal",
@@ -137,32 +189,41 @@ export const captureOrderService = async (orderID: string) => {
     if (typeof body === "string") {
       const jsonResponse = JSON.parse(body);
 
-      // Extract captureId if needed
+      // Extract captureId
       const captureId =
         jsonResponse.purchase_units?.[0]?.payments?.captures?.[0]?.id || null;
 
       // Update the order status to PAID
-      await OrderModel.findOneAndUpdate(
-        { paypalOrderId: orderId },
-        {
-          status: "PAID",
-        },
+      const updatedOrder = await OrderModel.findOneAndUpdate(
+        { paypalOrderId: orderID },
+        { status: "PAID" },
         { new: true }
       );
+
+      if (!updatedOrder) {
+        throw new Error("Order not found in database");
+      }
+
+     const student = await StudentModel.findOne({ _id: updatedOrder.userId });
+      await WishlistModel.deleteOne({
+        student: student?.email,
+        course: updatedOrder.courseId,
+      });
 
       return {
         message: "Payment captured successfully",
         captureId,
-        orderID1: orderId,
+        orderID1: orderID,
       };
     } else {
       throw new Error("Unexpected PayPal response type");
     }
   } catch (error) {
-    // If capture fails, update order status to FAILED
+    // Update order status to FAILED if capture fails
     await OrderModel.findOneAndUpdate(
-      { paypalOrderId: orderId },
-      { status: "FAILED" }
+      { paypalOrderId: orderID },
+      { status: "FAILED" },
+      { new: true }
     );
 
     if (error instanceof ApiError) throw new Error(error.message);

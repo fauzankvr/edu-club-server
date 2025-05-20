@@ -153,9 +153,9 @@ class InstructorController {
         points,
       } = req.body;
 
-      const courseImageId = req.file?.filename || "";
-      console.log("imag id", courseImageId);
-      console.log("FILE", req.file);
+      // const courseImageId = req.file?.filename || "";
+      const courseImageId = req.file?.path || "";
+
       const students: [] = [];
       const course = await this.InstructorUseCase.createNewCourse({
         title,
@@ -221,7 +221,6 @@ class InstructorController {
       const instructor = (req.instructor as JwtPayload)?.email;
       const courseId = req.params.id;
       const sections = JSON.parse(req.body.sections || "[]");
-
       const files = req.files as {
         videos?: Express.Multer.File[];
         pdfs?: Express.Multer.File[];
@@ -279,7 +278,7 @@ class InstructorController {
         throw new Error("Invalid token payload: Email not found");
       }
       if (req.file) {
-        updateData.profileImage = req.file.filename;
+        updateData.profileImage = req.file.path;
       }
 
       const result = this.InstructorUseCase.updateProfile(
@@ -308,9 +307,8 @@ class InstructorController {
     try {
       const courseId = req.params.id;
       const updateData = req.body;
-      console.log(" i am in update ", updateData);
       if (req.file) {
-        updateData.courseImgeId = req.file.filename;
+        updateData.courseImageId = req.file.path;
       }
       const updatedCourse = await this.InstructorUseCase.updateCourse(
         courseId,

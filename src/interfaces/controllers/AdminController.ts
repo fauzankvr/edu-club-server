@@ -61,6 +61,7 @@ class AdminController {
     try {
       const email = req.body.email;
       const result = await this.AdminUseCase.blockTeacher(email);
+      console.log(result)
       res.status(200).json({
         success: true,
       });

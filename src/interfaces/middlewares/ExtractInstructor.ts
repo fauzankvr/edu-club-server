@@ -29,7 +29,7 @@ export const verifyInstructor = async (
       return;
     }
 
-    if (instructor.isBlocked) {
+    if (instructor.IsBlocked) {
       res.status(403).json({ message: "User is blocked" });
       return;
     }

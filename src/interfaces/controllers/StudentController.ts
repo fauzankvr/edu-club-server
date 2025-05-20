@@ -5,6 +5,8 @@ import { generateAccessToken, verifyRefreshToken } from "../../infrastructure/ut
 import { captureOrderService, createOrderService } from "../../infrastructure/services/PaypalIntigrataion";
 import { IStudents } from "../../infrastructure/database/models/StudentModel";
 import { IReply } from "../../application/interface/IDiscussion";
+import { GoogleAuthServiceImpl } from "../../infrastructure/services/googleAuthServiceImpl";
+import { StudentRepository } from "../../infrastructure/repositories/StudentRepositorie";
 
 class StudentController {
   constructor(private StudentUseCase: StudentUseCase) {}
@@ -91,6 +93,26 @@ class StudentController {
       res
         .status(401)
         .json({ success: false, message: error.message || "Login failed" });
+    }
+  };
+
+  googleLoginController = async (req: Request, res: Response) => {
+    const { token } = req.body;
+
+    const authService = new GoogleAuthServiceImpl();
+    const studentRepo = new StudentRepository();
+
+    try {
+      // const { jwt, success } = await googleLoginUseCase(
+      //   token,
+      //   authService,
+      //   studentRepo
+      // );
+      // res.json({ success, accessToken: jwt });
+    } catch (err) {
+      res
+        .status(401)
+        .json({ success: false, message: "Google login failed", error: err });
     }
   };
 
@@ -239,10 +261,10 @@ class StudentController {
       console.log("iam in update profile");
       const student = req.student;
       const updateData = req.body;
-      // const imageUrl = req.file?.path;
+      const imageUrl = req.file?.path;
       if (req.file) {
-        updateData.profileImage = req.file.filename;
-        // updateData.profileImage = imageUrl;
+        // updateData.profileImage = req.file.filename;
+        updateData.profileImage = imageUrl;
       }
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error("Invalid token payload: Email not found");
@@ -408,6 +430,28 @@ class StudentController {
       return res.status(500).json({ message: "Failed to add to wishlist" });
     }
   };
+  removeWishlist = async (req: IAuthanticatedRequest, res: Response) => {
+    try {
+      const { courseId } = req.params;
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+
+      const result = await this.StudentUseCase.removeWishlist(
+        student.email,
+        courseId
+      );
+
+      return res
+        .status(200)
+        .json({ success: true, message: "Removed from wishlist", data: result });
+    } catch (error: any) {
+      console.error("Error removing from wishlist:", error.message);
+      return res.status(500).json({ message: "Failed to remove from wishlist" });
+    }
+  };
+
   getWishlist = async (req: IAuthanticatedRequest, res: Response) => {
     try {
       const student = req.student;
@@ -496,7 +540,7 @@ class StudentController {
 
   createDiscussion = async (req: Request, res: Response): Promise<void> => {
     try {
-      const orderId = req.params.id
+      const orderId = req.params.id;
       const data = await this.StudentUseCase.createDiscussion(
         orderId,
         req.body.text
@@ -518,7 +562,7 @@ class StudentController {
 
   getAllDiscussion = async (req: Request, res: Response): Promise<void> => {
     try {
-      let orderId = req.params.id
+      let orderId = req.params.id;
       const discussions = await this.StudentUseCase.getAllDiscussions(orderId);
       res.status(200).json({
         success: true,
@@ -544,46 +588,46 @@ class StudentController {
     res.json(data);
   };
   createReplay = async (req: IAuthanticatedRequest, res: Response) => {
-     try {
-       const student = req.student;
-       if (!student || typeof student === "string" || !("email" in student)) {
-         throw new Error("Invalid token payload: Email not found");
-       }
-       const studentData = await this.StudentUseCase.getProfile(student.email);
-       const userId = studentData._id
-       if (!studentData||!userId) {
-         throw new Error("not get student Data")
-       }
-       const discussionId = req.params.id;
-       const { text } = req.body;
+    try {
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+      const studentData = await this.StudentUseCase.getProfile(student.email);
+      const userId = studentData._id;
+      if (!studentData || !userId) {
+        throw new Error("not get student Data");
+      }
+      const discussionId = req.params.id;
+      const { text } = req.body;
 
-       if (!text)
-         return res.status(400).json({ message: "Reply text is required" });
+      if (!text)
+        return res.status(400).json({ message: "Reply text is required" });
 
-       const reply: IReply = {
-         discussionId,
-         userId,
-         text,
-         likes: 0,
-         dislikes: 0,
-         likedBy: [],
-         dislikedBy: [],
-         createdAt: new Date(),
-       };
+      const reply: IReply = {
+        discussionId,
+        userId,
+        text,
+        likes: 0,
+        dislikes: 0,
+        likedBy: [],
+        dislikedBy: [],
+        createdAt: new Date(),
+      };
 
-       const updatedDiscussion = await this.StudentUseCase.addReply(
-         discussionId,
-         reply
-       );
-       return res
-         .status(200)
-         .json({ message: "Reply added", data: updatedDiscussion });
-     } catch (err: any) {
-       return res.status(500).json({ message: err.message });
-     }
-  }
+      const updatedDiscussion = await this.StudentUseCase.addReply(
+        discussionId,
+        reply
+      );
+      return res
+        .status(200)
+        .json({ message: "Reply added", data: updatedDiscussion });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  };
 
-  getReplay = async (req: Request, res: Response)=>{
+  getReplay = async (req: Request, res: Response) => {
     try {
       const discussionId = req.params.id;
       const replies = await this.StudentUseCase.getReplay(discussionId);
@@ -592,7 +636,7 @@ class StudentController {
       console.error("Error fetching replies:", error);
       return res.status(500).json({ message: error.message || "Server error" });
     }
-  }
+  };
 }
 
 export default StudentController

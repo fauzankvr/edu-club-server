@@ -43,15 +43,13 @@ export class InstructorRepository implements IInstructorRepo {
   }
   async blockInstructor(email: string): Promise<boolean> {
     const student = await InstructorModal.findOne({ email });
-
     if (!student) {
       throw new Error("Student not found");
     }
 
-    student.isBlocked = !student.isBlocked;
+    student.IsBlocked = !student.IsBlocked;
     await student.save();
-
-    return student.isBlocked;
+    return student.IsBlocked;
   }
   async findOtp(email: string): Promise<IinstructorOtp | null> {
     const OtpData = await InstructorOtpModal.findOne({ email });

@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import connectDB from "./infrastructure/config/db";
 import studentRoutes from "./interfaces/routes/studentRoutes";
 import InstructorRoutes from "./interfaces/routes/instructorRoutes"
+import LanguageRoutes from "./interfaces/routes/admin.language.routes";
+import CategoryRoutes from "./interfaces/routes/admin.category.routes";
 import AdminRoutes from "./interfaces/routes/adminRoutes"
 import cookieParser from "cookie-parser";
 import http from "http";
@@ -69,6 +71,8 @@ setupSocket(io);
 
 // Routes
 app.use("/instructor", InstructorRoutes);
+app.use("/admin/language", LanguageRoutes);
+app.use("/admin/category", CategoryRoutes);
 app.use("/admin", AdminRoutes);
 app.use("/", studentRoutes);
 // Start Server

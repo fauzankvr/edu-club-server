@@ -23,7 +23,7 @@ export class StudentUseCase {
     const decoded = verifyRefreshToken(refreshToken);
     const accessToken = generateAccessToken({
       email: decoded.email,
-      _id: decoded._id,
+      id: decoded.id,
     });
     return accessToken;
   }
@@ -242,6 +242,9 @@ export class StudentUseCase {
   }
   async addWishlist(studentId: string, courseId: string) {
     return this.studentRepo.addCourseToWishlist(studentId, courseId);
+  }
+  async removeWishlist(studentId: string, courseId: string) {
+    return this.studentRepo.removeCourseFromWishlist(studentId, courseId);
   }
   async getWishlist(studentEmail: string) {
     return this.studentRepo.getWishlist(studentEmail);

@@ -1,16 +1,16 @@
 import multer, { FileFilterCallback } from "multer";
 import path from "path";
 import { Request } from "express";
-// import { storage } from "../../utility/cloudinay";
+import { storage } from "../../utility/cloudinay";
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (_req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
-});
+// const storage = multer.diskStorage({
+//   destination: (_req, _file, cb) => {
+//     cb(null, "uploads/");
+//   },
+//   filename: (_req, file, cb) => {
+//     cb(null, `${Date.now()}-${file.originalname}`);
+//   },
+// });
 
 const fileFilter = (
   _req: Request,

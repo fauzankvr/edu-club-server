@@ -32,6 +32,10 @@ interface IStudentRepo {
   getAllCourses(): Promise<any>;
 
   addCourseToWishlist(studentId: string, courseId: string): Promise<any>;
+  removeCourseFromWishlist(
+    studentId: string,
+    courseId: string
+  ): Promise<any>;
   getWishlist(studentEmail: string): Promise<any>;
   findWishlist(studentId: string, courseId: string): Promise<any>;
 

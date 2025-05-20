@@ -4,7 +4,7 @@ export interface IInstructor extends Document {
   _id: ObjectId;
   email: string;
   password: string;
-  isBlocked: boolean;
+  IsBlocked: boolean;
   fullName?: string;
   nationality?: string | null;
   dateOfBirth?: Date | null;
@@ -16,8 +16,8 @@ export interface IInstructor extends Document {
 const InstructorSchema: Schema = new Schema({
   fullName: { type: String, required: true },
   password: { type: String, required: true },
-    IsBlocked: { type: Boolean, required: true ,default:false},
-    phone: { type: Number },
+  IsBlocked: { type: Boolean, required: true ,default:false},
+  phone: { type: Number },
   profileImage:{type:String},
   nationality: { type: String },
   dateOfBirth: { type: Date },

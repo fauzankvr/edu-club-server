@@ -326,6 +326,7 @@ export class StudentRepository implements IStudentRepo {
       course: courseId,
     });
 
+
     if (exists) {
       throw new Error("Course already in wishlist");
     }
@@ -334,6 +335,19 @@ export class StudentRepository implements IStudentRepo {
       student: studentId,
       course: courseId,
     });
+    return wishlistEntry;
+  }
+  async removeCourseFromWishlist(
+    studentId: string,
+    courseId: string
+  ): Promise<any> {
+    const wishlistEntry = await WishlistModel.findOneAndDelete({
+      student: studentId,
+      course: courseId,
+    });
+    if (!wishlistEntry) {
+      throw new Error("Wishlist entry not found");
+    }
     return wishlistEntry;
   }
   async getWishlist(studentEmail: string): Promise<any> {
