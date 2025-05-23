@@ -14,7 +14,7 @@ router.post("/add", (req, res) => {
 });
 router.get("/getAll", (req, res) => {
   controller.getAll(req, res);
-}); 
+});
 router.patch("/update/:id", (req, res) => {
     controller.update(req, res);
 });

@@ -194,21 +194,52 @@ class StudentController {
       res.status(500).json({ message: "Something went wrong" });
     }
   };
-
   getAllCoureses = async (req: Request, res: Response) => {
     try {
-      const courses = await this.StudentUseCase.getAllCourses();
+      const search = (req.query.search as string) || "";
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const skip = (page - 1) * limit;
+      const sort = req.query.sort as string;
+      const {
+        Topics: category,
+        Language: language,
+        Rating: rating,
+        priceMin,
+        priceMax } = req.query as any;
 
-      if (!courses || courses.length === 0) {
-        return res.status(404).json({ message: "No courses found" });
-      }
+      console.log("sort", sort);
+      console.log("category", category);
+      console.log("language", language);
+      console.log("rating", rating);
+      console.log("price", priceMin, priceMax);
 
-      return res.status(200).json({ courses });
+      const { courses, total , languages, categories} = await this.StudentUseCase.getAllCourses(
+        search,
+        skip,
+        limit,
+        sort,
+        category,
+        language,
+        rating,
+        priceMin,
+        priceMax
+      );
+
+      return res.status(200).json({
+        courses,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+        languages,
+        categories
+      });
     } catch (error) {
       console.error("Error fetching courses:", error);
       res.status(500).json({ message: "Failed to fetch courses" });
     }
   };
+
   getCourseById = async (req: Request, res: Response) => {
     try {
       const { courseId } = req.params;
@@ -445,10 +476,16 @@ class StudentController {
 
       return res
         .status(200)
-        .json({ success: true, message: "Removed from wishlist", data: result });
+        .json({
+          success: true,
+          message: "Removed from wishlist",
+          data: result,
+        });
     } catch (error: any) {
       console.error("Error removing from wishlist:", error.message);
-      return res.status(500).json({ message: "Failed to remove from wishlist" });
+      return res
+        .status(500)
+        .json({ message: "Failed to remove from wishlist" });
     }
   };
 

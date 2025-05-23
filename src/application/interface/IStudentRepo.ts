@@ -29,13 +29,21 @@ interface IStudentRepo {
   blockStudent(email: string): Promise<boolean>;
   findSafeStudentByEmail(email: string): Promise<IStudents | null>;
 
-  getAllCourses(): Promise<any>;
+  getAllCourses(
+    search: string,
+    skip: number,
+    limit: number,
+    sort?: string,
+    category?: string,
+    language?: string,
+    rating?: string,
+    priceMin?: string,
+    priceMax?: string,
+  ): Promise<{ courses: any[]; total: number; languages: string[]; categories: string[] }>;
+
 
   addCourseToWishlist(studentId: string, courseId: string): Promise<any>;
-  removeCourseFromWishlist(
-    studentId: string,
-    courseId: string
-  ): Promise<any>;
+  removeCourseFromWishlist(studentId: string, courseId: string): Promise<any>;
   getWishlist(studentEmail: string): Promise<any>;
   findWishlist(studentId: string, courseId: string): Promise<any>;
 

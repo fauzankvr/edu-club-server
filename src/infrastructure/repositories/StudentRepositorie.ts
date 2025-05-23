@@ -9,6 +9,8 @@ import StudentModel, { IStudents } from "../database/models/StudentModel";
 import { WishlistModel } from "../database/models/WishlistModel";
 import { IDiscussion, IReply } from "../../application/interface/IDiscussion";
 import DiscussionModel from "../database/models/Discussion";
+import { LanguageModel } from "../database/models/LanguageModel";
+import { CategoryModel } from "../database/models/CategoryModel";
 
 export interface LoginData{
   email: string,
@@ -46,8 +48,8 @@ export class StudentRepository implements IStudentRepo {
     );
   }
 
- async findStudentById(id: string): Promise<any> {
-   return await StudentModel.findOne({_id:id})
+  async findStudentById(id: string): Promise<any> {
+    return await StudentModel.findOne({ _id: id });
   }
 
   async findStudentByEmail(email: string): Promise<Student | null> {
@@ -69,7 +71,7 @@ export class StudentRepository implements IStudentRepo {
       student.profileImage,
       student.createdAt,
       student.updatedAt,
-      student._id,
+      student._id
     );
   }
 
@@ -110,9 +112,117 @@ export class StudentRepository implements IStudentRepo {
     return student.isBlocked;
   }
 
-  async getAllCourses(): Promise<any[]> {
+  async getAllCourses(
+    search: string,
+    skip: number,
+    limit: number,
+    sort?: string,
+    category?: string,
+    language?: string,
+    rating?: string, 
+    priceMin?: string,
+    priceMax?: string
+  ): Promise<{
+    courses: any[];
+    total: number;
+    languages: string[];
+    categories: string[];
+  }> {
     try {
-      const courses = await Course.aggregate([
+      console.log("Input parameters:", {
+        search,
+        skip,
+        limit,
+        sort,
+        category,
+        language,
+        rating,
+        priceMin,
+        priceMax,
+      });
+      const pipeline: any[] = [];
+
+      // Search
+      if (search?.trim()) {
+        pipeline.push({
+          $match: {
+            title: { $regex: `^${search}`, $options: "i" },
+          },
+        });
+      }
+
+      // Category filter
+      if (category) {
+        pipeline.push({
+          $match: { category: { $regex: `^${category}$`, $options: "i" } },
+        });
+      }
+
+      // Language filter
+      if (language) {
+        pipeline.push({
+          $match: { language: { $regex: `^${language}$`, $options: "i" } },
+        });
+      }
+
+      // Price range filter
+      // convert strings → numbers; empty strings → null
+      const min = priceMin && priceMin !== "" ? Number(priceMin) : null;
+      const max = priceMax && priceMax !== "" ? Number(priceMax) : null;
+      // Price range filter
+      if (min != null && max != null) {
+        pipeline.push({ $match: { price: { $gte: min, $lte: max } } });
+      } else if (min != null && max == null) {
+        // e.g. "₹5000+"  – only lower bound
+        pipeline.push({ $match: { price: { $gte: min } } });
+      } else if (max != null && min == null) {
+        // (rare) upper-bound only
+        pipeline.push({ $match: { price: { $lte: max } } });
+      }
+
+      // Lookup and average rating from Review collection
+      pipeline.push(
+        {
+          $lookup: {
+            from: "reviews",
+            localField: "_id",
+            foreignField: "course",
+            as: "reviews",
+          },
+        },
+        {
+          $addFields: {
+            averageRating: { $ifNull: [{ $avg: "$reviews.rating" }, 0] }, // Default to 0 if no reviews
+          },
+        }
+      );
+
+      // Log courses with reviews
+      const coursesWithReviews = await Course.aggregate([...pipeline]);
+      console.log("Courses with reviews:", coursesWithReviews);
+
+      // Filter by minimum rating if provided
+      const parsedRating = rating ? parseFloat(rating) : null;
+      if (parsedRating != null) {
+        pipeline.push({
+          $match: {
+            averageRating: parsedRating,
+          },
+        });
+      }
+
+      // Log courses after rating filter
+      const coursesAfterFilters = await Course.aggregate([...pipeline]);
+      console.log("Courses after filters:", coursesAfterFilters);
+
+      // Count total after filters
+      const totalPipeline = [...pipeline, { $count: "total" }];
+      const totalResult = await Course.aggregate(totalPipeline);
+      console.log("Total result:", totalResult);
+      const total = totalResult[0]?.total || 0;
+
+      // Join instructor data
+      pipeline.push(
         {
           $lookup: {
             from: "instructors",
@@ -123,36 +233,68 @@ export class StudentRepository implements IStudentRepo {
         },
         {
           $unwind: {
-            path: "$instructorDetails", // Unwind the array to a single object
-            preserveNullAndEmptyArrays: true, // Keep courses even if no instructor is found
+            path: "$instructorDetails",
+            preserveNullAndEmptyArrays: true,
           },
         },
         {
           $project: {
             _id: 1,
-            category: 1,
-            courseImageId: 1,
+            title: 1,
             description: 1,
+            category: 1,
+            language: 1,
+            price: 1,
             discount: 1,
+            courseImageId: 1,
+            students: 1,
+            points: 1,
+            averageRating: 1,
             instructor: {
               _id: "$instructorDetails._id",
               email: "$instructorDetails.email",
               name: "$instructorDetails.fullName",
               profileImage: "$instructorDetails.profileImage",
             },
-            language: 1,
-            points: 1,
-            price: 1,
-            students: 1,
-            title: 1,
           },
-        },
-      ]);
+        }
+      );
 
-      return courses;
+      // Sorting
+      if (sort) {
+        const [field, order] = sort.split("-");
+        const mongoField =
+          field === "title"
+            ? "title"
+            : field === "price"
+            ? "price"
+            : field === "rating"
+            ? "averageRating"
+            : null;
+        if (mongoField) {
+          pipeline.push({
+            $sort: { [mongoField]: order === "asc" ? 1 : -1 },
+          });
+        }
+      }
+
+      // Pagination
+      pipeline.push({ $skip: skip }, { $limit: limit });
+
+      const courses = await Course.aggregate(pipeline);
+
+      const languages = (
+        await LanguageModel.find({ isBlocked: false }).select("name")
+      ).map((lang) => lang.name) || [" "];
+
+      const categories = (
+        await CategoryModel.find({ isBlocked: false }).select("name")
+      ).map((cat) => cat.name) || [" "];
+
+      return { courses, total, languages, categories };
     } catch (error) {
       console.error("Error fetching courses:", error);
-      throw new Error("Failed to fetch courses");
+      throw new Error("No courses available");
     }
   }
 
@@ -326,7 +468,6 @@ export class StudentRepository implements IStudentRepo {
       course: courseId,
     });
 
-
     if (exists) {
       throw new Error("Course already in wishlist");
     }
@@ -454,13 +595,12 @@ export class StudentRepository implements IStudentRepo {
       studentId: student._id,
     };
 
-  const discussion = await DiscussionModel.create(discussionData);
+    const discussion = await DiscussionModel.create(discussionData);
 
-  return await discussion.populate(
-    "studentId",
-    "firstName lastName profileImage"
-  );
-
+    return await discussion.populate(
+      "studentId",
+      "firstName lastName profileImage"
+    );
   }
 
   async getAllDiscussions(paypalOrderId: string): Promise<IDiscussion[]> {
@@ -472,7 +612,7 @@ export class StudentRepository implements IStudentRepo {
     return await DiscussionModel.find({ courseId: order.courseId }).populate(
       "studentId",
       "firstName lastName profileImage"
-    )
+    );
   }
 
   async findByIdDicussion(id: string): Promise<IDiscussion> {
@@ -509,18 +649,20 @@ export class StudentRepository implements IStudentRepo {
     }
   }
 
-  async updateReplay(id: string, data: Partial<IDiscussion>): Promise<IDiscussion | null> {
-    return await DiscussionModel.findByIdAndUpdate(id, data, { new: true }).populate(
-      "userId",
-      "firstName lastName profileImage"
-    );
+  async updateReplay(
+    id: string,
+    data: Partial<IDiscussion>
+  ): Promise<IDiscussion | null> {
+    return await DiscussionModel.findByIdAndUpdate(id, data, {
+      new: true,
+    }).populate("userId", "firstName lastName profileImage");
   }
- async findReplayById(id: string): Promise<IReply[]> {
-   const discussion = await DiscussionModel.findById(id)
-     .select("replies")
-     .populate("replies.userId", "firstName lastName profileImage")
-     .lean();
-   if (!discussion || !discussion.replies) return [];
-   return discussion.replies;
- }
+  async findReplayById(id: string): Promise<IReply[]> {
+    const discussion = await DiscussionModel.findById(id)
+      .select("replies")
+      .populate("replies.userId", "firstName lastName profileImage")
+      .lean();
+    if (!discussion || !discussion.replies) return [];
+    return discussion.replies;
+  }
 }

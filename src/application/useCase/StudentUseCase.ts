@@ -97,12 +97,20 @@ export class StudentUseCase {
     return studentData;
   }
 
-  async getAllCourses() {
-    const courses = await this.studentRepo.getAllCourses();
-    if (!courses || courses.length === 0) {
-      throw new Error("No courses available");
-    }
-    return courses;
+  async getAllCourses(
+    search: string,
+    skip: number,
+    limit: number,
+    sort?: string,
+    category?: string,
+    language?: string,
+    rating?: string,
+    priceMin?: string,
+    priceMax?: string
+  ) {
+    const { courses, total, languages, categories } =
+      await this.studentRepo.getAllCourses(search, skip, limit, sort, category, language, rating, priceMin, priceMax);
+    return { courses, total, languages, categories };
   }
 
   async getCourseById(id: string) {
@@ -323,15 +331,13 @@ export class StudentUseCase {
     return await this.studentRepo.updateReplay(discussionId, discussion);
   }
 
+  async getReplay(discussionId: string) {
+    const discussion = await this.studentRepo.findReplayById(discussionId);
 
-  async getReplay (discussionId: string) {
-  const discussion = await this.studentRepo.findReplayById(discussionId);
+    if (!discussion) {
+      throw new Error("Discussion not found");
+    }
 
-  if (!discussion) {
-    throw new Error("Discussion not found");
+    return discussion;
   }
-
-  return discussion;
-}
-
 }
