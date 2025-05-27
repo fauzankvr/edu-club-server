@@ -11,6 +11,7 @@ import { IDiscussion, IReply } from "../../application/interface/IDiscussion";
 import DiscussionModel from "../database/models/Discussion";
 import { LanguageModel } from "../database/models/LanguageModel";
 import { CategoryModel } from "../database/models/CategoryModel";
+import Notes from "../database/models/NotesModel";
 
 export interface LoginData{
   email: string,
@@ -119,7 +120,7 @@ export class StudentRepository implements IStudentRepo {
     sort?: string,
     category?: string,
     language?: string,
-    rating?: string, 
+    rating?: string,
     priceMin?: string,
     priceMax?: string
   ): Promise<{
@@ -144,9 +145,13 @@ export class StudentRepository implements IStudentRepo {
 
       // Search
       if (search?.trim()) {
+        // Sanitize search input to prevent regex injection
+        const sanitizedSearch = search
+          .trim()
+          .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         pipeline.push({
           $match: {
-            title: { $regex: `^${search}`, $options: "i" },
+            title: { $regex: sanitizedSearch, $options: "i" }, // Match anywhere in the title
           },
         });
       }
@@ -166,17 +171,13 @@ export class StudentRepository implements IStudentRepo {
       }
 
       // Price range filter
-      // convert strings → numbers; empty strings → null
       const min = priceMin && priceMin !== "" ? Number(priceMin) : null;
       const max = priceMax && priceMax !== "" ? Number(priceMax) : null;
-      // Price range filter
       if (min != null && max != null) {
         pipeline.push({ $match: { price: { $gte: min, $lte: max } } });
       } else if (min != null && max == null) {
-        // e.g. "₹5000+"  – only lower bound
         pipeline.push({ $match: { price: { $gte: min } } });
       } else if (max != null && min == null) {
-        // (rare) upper-bound only
         pipeline.push({ $match: { price: { $lte: max } } });
       }
 
@@ -199,26 +200,24 @@ export class StudentRepository implements IStudentRepo {
 
       // Log courses with reviews
       const coursesWithReviews = await Course.aggregate([...pipeline]);
-      console.log("Courses with reviews:", coursesWithReviews);
 
       // Filter by minimum rating if provided
       const parsedRating = rating ? parseFloat(rating) : null;
       if (parsedRating != null) {
         pipeline.push({
           $match: {
-            averageRating: parsedRating,
+            averageRating: { $gte: parsedRating }, // Use $gte for rating range
           },
         });
       }
 
       // Log courses after rating filter
       const coursesAfterFilters = await Course.aggregate([...pipeline]);
-      console.log("Courses after filters:", coursesAfterFilters);
 
       // Count total after filters
       const totalPipeline = [...pipeline, { $count: "total" }];
       const totalResult = await Course.aggregate(totalPipeline);
-      console.log("Total result:", totalResult);
+      
       const total = totalResult[0]?.total || 0;
 
       // Join instructor data
@@ -664,5 +663,64 @@ export class StudentRepository implements IStudentRepo {
       .lean();
     if (!discussion || !discussion.replies) return [];
     return discussion.replies;
+  }
+
+  async getNote(id: string, courseId: string): Promise<any> {
+    const notes = await Notes.find({ student_id: id, course_id: courseId });
+    if (!notes) {
+      return [];
+    }
+    console.log("Notes found:", notes);
+    return notes;
+  }
+  createNote(id: string, data: any): Promise<any> {
+    const notes = new Notes({
+      title: data.title,
+      notes: data.notes,
+      student_id: id,
+      course_id: data.course_id,
+    });
+    return notes.save();
+  }
+  updateNotes(id: string, studentId: string, newNote: string): Promise<any> {
+    return Notes.findOneAndUpdate(
+      { _id: id, student_id: studentId },
+      { $push: { notes: newNote } },
+      { new: true }
+    );
+  }
+  deleteNotes(id: string, studentId: string): Promise<any> {
+    return Notes.findOneAndDelete({ _id: id, student_id: studentId });
+  }
+  // DELETE a specific note from notes[] array by index
+  async deleteNote(id: string, studentId: string, index: number): Promise<any> {
+    const noteDoc = await Notes.findOne({ _id: id, student_id: studentId });
+    if (!noteDoc) throw new Error("Note not found");
+
+    // Remove note at index
+    if (noteDoc.notes && index >= 0 && index < noteDoc.notes.length) {
+      noteDoc.notes.splice(index, 1);
+      return await noteDoc.save(); // Save updated document
+    } else {
+      throw new Error("Invalid note index");
+    }
+  }
+
+  // UPDATE a specific note from notes[] array by index
+  async updateNote(
+    id: string,
+    studentId: string,
+    newNote: string,
+    index: number
+  ): Promise<any> {
+    const noteDoc = await Notes.findOne({ _id: id, student_id: studentId });
+    if (!noteDoc) throw new Error("Note not found");
+
+    if (noteDoc.notes && index >= 0 && index < noteDoc.notes.length) {
+      noteDoc.notes[index] = newNote;
+      return await noteDoc.save(); // Save updated document
+    } else {
+      throw new Error("Invalid note index");
+    }
   }
 }

@@ -33,7 +33,10 @@ interface IInstructorRepo {
 
   getAllChats(id: string): Promise<any[]>;
   getAllMessages(id: string): Promise<any[]>;
-  postMessage(data:object): Promise<any>;
+  postMessage(data: object): Promise<any>;
+
+  getPendingPayment(email: string): Promise<any[]>;
+  updatePaypalEmail(email: string, updateData: string): Promise<boolean>;
 }
 
 export default IInstructorRepo

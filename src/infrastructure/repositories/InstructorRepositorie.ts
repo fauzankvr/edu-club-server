@@ -8,6 +8,7 @@ import { ISection } from "../database/models/CarriculamModel";
 import CurriculumModel from "../database/models/CarriculamModel";
 import { ChatModel } from "../database/models/ChatModel";
 import { MessageModel } from "../database/models/MessageModel";
+import TransactionModel from "../database/models/Transaction";
 
 
 export class InstructorRepository implements IInstructorRepo {
@@ -29,9 +30,9 @@ export class InstructorRepository implements IInstructorRepo {
     const otpData = await InstructorOtpModal.create({ email, otp });
     return otpData;
   }
-  async findById(id: string): Promise<IInstructor | null>{
-    const instructor = await InstructorModal.findById(id)
-    return instructor
+  async findById(id: string): Promise<IInstructor | null> {
+    const instructor = await InstructorModal.findById(id);
+    return instructor;
   }
   async findInstrucotrByEmail(email: string): Promise<IInstructor | null> {
     const instructorData = await InstructorModal.findOne({ email });
@@ -203,16 +204,16 @@ export class InstructorRepository implements IInstructorRepo {
         },
       ]);
       return chats;
-    }catch (error) {
+    } catch (error) {
       console.error("Error retrieving chats:", error);
       throw new Error("Failed to retrieve chats");
     }
-  }   
+  }
   getAllMessages(id: string): Promise<any[]> {
     const messages = MessageModel.find({ chatId: id });
     if (!messages) {
       throw new Error("Failed to retrieve messages");
-    } 
+    }
     return messages;
   }
   postMessage(data: object): Promise<any> {
@@ -220,6 +221,53 @@ export class InstructorRepository implements IInstructorRepo {
     if (!message) {
       throw new Error("Failed to post message");
     }
-    return message; 
+    return message;
+  }
+  async getPendingPayment(email: string): Promise<any[]> {
+    const result = await TransactionModel.aggregate([
+      {
+        $match: {
+          instructor: email,
+          payoutStatus: "PENDING",
+        },
+      },
+      // Lookup Course details (assuming `courseId` matches `_id` in CourseModel)
+      {
+        $lookup: {
+          from: "courses", // MongoDB collection name (check your DB)
+          localField: "courseId",
+          foreignField: "_id",
+          as: "course",
+        },
+      },
+      // Lookup Student details (assuming `studentId` matches `_id` in UserModel)
+      {
+        $lookup: {
+          from: "students", // MongoDB collection name (e.g., "users" or "students")
+          localField: "studentId",
+          foreignField: "_id",
+          as: "student",
+        },
+      },
+      // Convert lookup arrays to single objects (since $lookup returns an array)
+      {
+        $addFields: {
+          course: { $arrayElemAt: ["$course", 0] }, // Take first element
+          student: { $arrayElemAt: ["$student", 0] },
+        },
+      },
+    ]);
+
+    return result;
+  }
+
+  async updatePaypalEmail(email: string, paypalEmail: string): Promise<boolean> {
+    try {
+      await InstructorModal.updateOne({ email }, { paypalEmail });
+      return true;
+    } catch (error) {
+      console.error("Error updating PayPal email:", error);
+      return false;
+    }
   }
 }

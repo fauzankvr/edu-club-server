@@ -4,6 +4,7 @@ import { AdminUseCase } from '../../application/useCase/AdminUseCase'
 import AdminController from '../controllers/AdminController'
 import { StudentRepository } from '../../infrastructure/repositories/StudentRepositorie'
 import { InstructorRepository } from '../../infrastructure/repositories/InstructorRepositorie'
+import { verifyAdmin } from '../middlewares/ExtractAdmin'
 
 
 
@@ -36,6 +37,12 @@ router.post("/logout", (req, res) => {
     controller.logOutAdmin(req,res)
 })
 
+router.get("/payouts", (req, res) => {
+  controller.getPayouts(req, res);
+});
+router.post("/payout/:id",verifyAdmin, (req, res) => {
+  controller.updatePayout(req, res);
+});
 
 
 export default router

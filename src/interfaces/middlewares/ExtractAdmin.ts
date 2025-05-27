@@ -1,6 +1,6 @@
 import { Response, Request, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import StudentModel from "../../infrastructure/database/models/StudentModel";
+import Admin from "../../infrastructure/database/models/AdminModel";
 
 export interface IAuthanticatedRequest extends Request {
   admin?: string | JwtPayload;
@@ -22,8 +22,7 @@ export const verifyAdmin = async (
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
     req.admin = decoded;
-
-    const admin = await StudentModel.findOne({ email: decoded.email });
+    const admin = await Admin.findOne({ email: decoded.email });
 
     if (!admin) {
       res.status(404).json({ message: "Admin not found" });

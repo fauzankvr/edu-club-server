@@ -12,11 +12,11 @@ export class AdminUseCase {
   constructor(
     adminRepo: IAdminRepo,
     studentRepo: IStudentRepo,
-    instrucotorRepo:IInstructorRepo
+    instrucotorRepo: IInstructorRepo
   ) {
     this.adminRepo = adminRepo;
     this.studentRepo = studentRepo;
-    this.instrucotorRepo = instrucotorRepo
+    this.instrucotorRepo = instrucotorRepo;
   }
 
   async loginAdmin(email: string, password: string) {
@@ -55,4 +55,12 @@ export class AdminUseCase {
     const res = await this.studentRepo.blockStudent(email);
     return res;
   }
+  getPayouts = async () => {
+    const payouts = await this.adminRepo.getPayouts();
+    console.log("pay", payouts);
+    if (!payouts) {
+      throw new Error("No payouts found");
+    }
+    return payouts;
+  };
 }

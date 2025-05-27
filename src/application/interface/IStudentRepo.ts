@@ -38,9 +38,13 @@ interface IStudentRepo {
     language?: string,
     rating?: string,
     priceMin?: string,
-    priceMax?: string,
-  ): Promise<{ courses: any[]; total: number; languages: string[]; categories: string[] }>;
-
+    priceMax?: string
+  ): Promise<{
+    courses: any[];
+    total: number;
+    languages: string[];
+    categories: string[];
+  }>;
 
   addCourseToWishlist(studentId: string, courseId: string): Promise<any>;
   removeCourseFromWishlist(studentId: string, courseId: string): Promise<any>;
@@ -62,6 +66,13 @@ interface IStudentRepo {
   ): Promise<IDiscussion | null>;
 
   findReplayById(id: string): Promise<IReply[]>;
+
+  getNote(id: string, courseId: string): Promise<any>;
+  createNote(id: string, data: any): Promise<any>;
+  updateNotes(id: string, studentId: string, data: any): Promise<any>;
+  deleteNotes(id: string, studentId: string): Promise<any>;
+  updateNote(id: string, studentId: string, text:string,index:number): Promise<any>;
+  deleteNote(id: string, studentId: string,index:number): Promise<any>;
 }
 
 export default IStudentRepo;

@@ -9,7 +9,8 @@ import {
 import Course, { ICourse } from "../database/models/CourseModel";
 import OrderModel from "../database/models/OrderModel";
 import StudentModel, { IStudents } from "../database/models/StudentModel";
-import { ObjectId } from "mongoose";
+import TransactionModel from "../database/models/Transaction";
+import { ObjectId, Types } from "mongoose"; // Added Types import for ObjectId validation
 import { WishlistModel } from "../database/models/WishlistModel";
 
 // Load PayPal environment variables
@@ -101,7 +102,6 @@ export const createOrderService = async (cart: any, userEmail: string) => {
       await OrderModel.deleteOne({
         paypalOrderId: existingPendingOrder.paypalOrderId,
       });
-
     }
   }
 
@@ -158,8 +158,6 @@ export const createOrderService = async (cart: any, userEmail: string) => {
         priceUSD: parseFloat(priceUSD),
       });
 
-
-
       return {
         orderId,
         status: "PENDING",
@@ -173,7 +171,7 @@ export const createOrderService = async (cart: any, userEmail: string) => {
   }
 };
 
-// Capture PayPal Order and update status
+// Capture PayPal Order, create transaction, and update status
 export const captureOrderService = async (orderID: string) => {
   if (!orderID || typeof orderID !== "string") {
     throw new Error("Invalid PayPal Order ID");
@@ -193,6 +191,10 @@ export const captureOrderService = async (orderID: string) => {
       const captureId =
         jsonResponse.purchase_units?.[0]?.payments?.captures?.[0]?.id || null;
 
+      if (!captureId) {
+        throw new Error("No capture ID received from PayPal");
+      }
+
       // Update the order status to PAID
       const updatedOrder = await OrderModel.findOneAndUpdate(
         { paypalOrderId: orderID },
@@ -204,11 +206,46 @@ export const captureOrderService = async (orderID: string) => {
         throw new Error("Order not found in database");
       }
 
-     const student = await StudentModel.findOne({ _id: updatedOrder.userId });
-      await WishlistModel.deleteOne({
-        student: student?.email,
-        course: updatedOrder.courseId,
+      // Fetch course to get instructor
+      const course = await Course.findById(updatedOrder.courseId);
+      if (!course) {
+        throw new Error("Course not found");
+      }
+
+      if (!course.instructor) {
+        throw new Error("Course does not have an associated instructor");
+      }
+
+      // Calculate payment split (PayPal fee: 2.9% + $0.30, admin: 15%, instructor: 85%)
+      const totalAmount = updatedOrder.priceUSD;
+      const paypalFee = parseFloat((totalAmount * 0.029 + 0.3).toFixed(2)); // PayPal fee
+      const netAmount = parseFloat((totalAmount - paypalFee).toFixed(2));
+      const adminShare = parseFloat((netAmount * 0.15).toFixed(2)); // 15%
+      const instructorShare = parseFloat((netAmount * 0.85).toFixed(2)); // 85%
+
+      // Create transaction record
+      await TransactionModel.create({
+        studentId: updatedOrder.userId,
+        instructor: course.instructor, // Changed from instructorId to instructor
+        courseId: updatedOrder.courseId,
+        totalAmount,
+        paypalFee,
+        adminShare,
+        instructorShare,
+        paymentStatus: "COMPLETED",
+        paypalTransactionId: captureId,
+        payoutStatus: "PENDING",
+        createdAt: new Date(),
       });
+
+      // Remove course from wishlist
+      const student = await StudentModel.findOne({ _id: updatedOrder.userId });
+      if (student) {
+        await WishlistModel.deleteOne({
+          student: student.email,
+          course: updatedOrder.courseId,
+        });
+      }
 
       return {
         message: "Payment captured successfully",

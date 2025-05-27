@@ -9,6 +9,7 @@ import IInstructorRepo from "../interface/IInstructorRepo";
 import bcrypt from 'bcrypt'
 import { ISection } from "../../infrastructure/database/models/CarriculamModel";
 import { IInstructor } from "../../infrastructure/database/models/InstructorModel";
+import { requestPayoutService } from "../../infrastructure/services/PayoutService";
 
 
 export interface CreateCourseDTO {
@@ -252,5 +253,24 @@ export class InstructorUseCase {
       throw new Error("Failed to post message");
     }
     return chat;
+  }
+  getPendingPayment(email: string) {
+    const res = this.instructorRepo.getPendingPayment(email);
+    if (!res) {
+      throw new Error("Failed to retrieve pending payments");
+    }
+    return res;
+  }
+  updatePaypalEmail(email: string, paypalEmail: string) {
+    const updated = this.instructorRepo.updateProfileByEmail(email, {
+      paypalEmail,
+    });
+    if (!updated) {
+      throw new Error("Failed to update PayPal email");
+    }
+    return updated;
+  }
+  async requestPayout(instructorMail: string, paypalEmail: string) {
+    return await requestPayoutService(instructorMail, paypalEmail);
   }
 }

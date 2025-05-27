@@ -100,4 +100,16 @@ router.post("/postMessage", verifyInstructor, (req, res) => {
   controller.postMessage(req, res);
 });
 
+router.get("/wallet", verifyInstructor, (req, res) => {
+  controller.getPendingPayment(req, res);
+});
+
+router.patch("/updatePaypalEmail", verifyInstructor, (req, res) => {
+  controller.updatePaypalEmail(req, res);
+});
+
+router.post("/requestPayout", verifyInstructor, (req, res) => {
+  controller.requestPayout(req, res);
+});
+
 export default router

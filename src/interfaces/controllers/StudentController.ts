@@ -7,6 +7,7 @@ import { IStudents } from "../../infrastructure/database/models/StudentModel";
 import { IReply } from "../../application/interface/IDiscussion";
 import { GoogleAuthServiceImpl } from "../../infrastructure/services/googleAuthServiceImpl";
 import { StudentRepository } from "../../infrastructure/repositories/StudentRepositorie";
+import { IAuthenticatedRequest } from "../middlewares/ExtractInstructor";
 
 class StudentController {
   constructor(private StudentUseCase: StudentUseCase) {}
@@ -206,7 +207,8 @@ class StudentController {
         Language: language,
         Rating: rating,
         priceMin,
-        priceMax } = req.query as any;
+        priceMax,
+      } = req.query as any;
 
       console.log("sort", sort);
       console.log("category", category);
@@ -214,17 +216,18 @@ class StudentController {
       console.log("rating", rating);
       console.log("price", priceMin, priceMax);
 
-      const { courses, total , languages, categories} = await this.StudentUseCase.getAllCourses(
-        search,
-        skip,
-        limit,
-        sort,
-        category,
-        language,
-        rating,
-        priceMin,
-        priceMax
-      );
+      const { courses, total, languages, categories } =
+        await this.StudentUseCase.getAllCourses(
+          search,
+          skip,
+          limit,
+          sort,
+          category,
+          language,
+          rating,
+          priceMin,
+          priceMax
+        );
 
       return res.status(200).json({
         courses,
@@ -232,7 +235,7 @@ class StudentController {
         page,
         totalPages: Math.ceil(total / limit),
         languages,
-        categories
+        categories,
       });
     } catch (error) {
       console.error("Error fetching courses:", error);
@@ -474,13 +477,11 @@ class StudentController {
         courseId
       );
 
-      return res
-        .status(200)
-        .json({
-          success: true,
-          message: "Removed from wishlist",
-          data: result,
-        });
+      return res.status(200).json({
+        success: true,
+        message: "Removed from wishlist",
+        data: result,
+      });
     } catch (error: any) {
       console.error("Error removing from wishlist:", error.message);
       return res
@@ -671,6 +672,104 @@ class StudentController {
       return res.status(200).json(replies);
     } catch (error: any) {
       console.error("Error fetching replies:", error);
+      return res.status(500).json({ message: error.message || "Server error" });
+    }
+  };
+  getNotes = async (req: IAuthanticatedRequest, res: Response) => {
+    try {
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+      const notes = await this.StudentUseCase.getNotes(student.email, req.params.id);
+      return res.status(200).json(notes);
+    } catch (error: any) {
+      console.error("Error fetching notes:", error);
+      return res.status(500).json({ message: error.message || "Server error" });
+    }
+  };
+
+  createNotes = async (req: IAuthanticatedRequest , res: Response) => {
+    try {
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+      const notes = await this.StudentUseCase.createNotes(
+        student.email,
+        req.body
+      );
+      return res.status(201).json(notes);
+    } catch (error: any) {
+      console.error("Error creating notes:", error);
+      return res.status(500).json({ message: error.message || "Server error" });
+    }
+  };
+  updateNotes = async (req: IAuthanticatedRequest, res: Response) => {
+    try {
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+      const notes = await this.StudentUseCase.updateNotes(
+        student.email,
+        req.params.id,
+        req.body.note
+      );
+      return res.status(200).json(notes);
+    } catch (error: any) {
+      console.error("Error updating notes:", error);
+      return res.status(500).json({ message: error.message || "Server error" });
+    }
+  };
+  deleteNotes = async (req: IAuthanticatedRequest, res: Response) => {
+    try {
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+      const notes = await this.StudentUseCase.deleteNotes(
+        student.email,
+        req.params.id
+      );
+      return res.status(200).json(notes);
+    } catch (error: any) {
+      console.error("Error deleting notes:", error);
+      return res.status(500).json({ message: error.message || "Server error" });
+    }
+  };
+  updateNote = async (req: IAuthanticatedRequest, res: Response) => {
+    try {
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+      const notes = await this.StudentUseCase.updateNote(
+        student.email,
+        req.params.id,
+        req.body.newText,
+        req.body.noteIndex
+      );
+      return res.status(200).json(notes);
+    } catch (error: any) {
+      console.error("Error updating note:", error);
+      return res.status(500).json({ message: error.message || "Server error" });
+    }
+  };
+  deleteNote = async (req: IAuthanticatedRequest, res: Response) => {
+    try {
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+      const notes = await this.StudentUseCase.deleteNote(
+        student.email,
+        req.params.id,
+        req.body.noteIndex
+      );
+      return res.status(200).json(notes);
+    } catch (error: any) {
+      console.error("Error deleting note:", error);
       return res.status(500).json({ message: error.message || "Server error" });
     }
   };

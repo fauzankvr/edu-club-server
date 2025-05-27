@@ -9,8 +9,9 @@ export interface IInstructor extends Document {
   nationality?: string | null;
   dateOfBirth?: Date | null;
   eduQulification?: string | null;
-  phone?: number,
-  profileImage?:string,
+  phone?: number;
+  profileImage?: string;
+  paypalEmail?: string;
 }
 
 const InstructorSchema: Schema = new Schema({
@@ -23,6 +24,7 @@ const InstructorSchema: Schema = new Schema({
   dateOfBirth: { type: Date },
   eduQulification: { type: String },
   email: { type: String, required: true, unique: true },
+  paypalEmail: { type: String, default: "" },
 });
 
 const Instructor = mongoose.model<IInstructor>("Instructor", InstructorSchema);

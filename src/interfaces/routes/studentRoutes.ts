@@ -179,5 +179,25 @@ router.get("/chat/messages/:chatId", (req, res) =>
   chatController.getChatMessages(req, res)
 );
 
+//notes routes
+
+router.get("/student/notes/:id", verifyStudent, async (req, res) =>{
+  await controller.getNotes(req, res);
+});
+router.post("/student/notes", verifyStudent, async (req, res) => {
+  await controller.createNotes(req, res);
+});
+router.put("/student/notes/:id", verifyStudent, async (req, res) => {
+  await controller.updateNotes(req, res);
+});
+router.delete("/student/notes/:id", verifyStudent, async (req, res) => {
+  await controller.deleteNotes(req, res);
+});
+router.patch("/student/note/:id/update", verifyStudent, async (req, res) => {
+  await controller.updateNote(req, res);
+});
+router.patch("/student/note/:id/delete", verifyStudent, async (req, res) => {
+  await controller.deleteNote(req, res);
+});
 
 export default router;

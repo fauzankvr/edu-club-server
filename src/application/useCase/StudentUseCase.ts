@@ -109,7 +109,17 @@ export class StudentUseCase {
     priceMax?: string
   ) {
     const { courses, total, languages, categories } =
-      await this.studentRepo.getAllCourses(search, skip, limit, sort, category, language, rating, priceMin, priceMax);
+      await this.studentRepo.getAllCourses(
+        search,
+        skip,
+        limit,
+        sort,
+        category,
+        language,
+        rating,
+        priceMin,
+        priceMax
+      );
     return { courses, total, languages, categories };
   }
 
@@ -339,5 +349,61 @@ export class StudentUseCase {
     }
 
     return discussion;
+  }
+  getNotes = async (email: string, courseId: string) => {
+    const student = await this.studentRepo.findSafeStudentByEmail(email);
+    if (!student) {
+      throw new Error("Student not found");
+    }
+    const studentId = student._id.toString();
+    console.log("studentId", studentId);
+    console.log("courseId", courseId);
+    const notes = await this.studentRepo.getNote(studentId, courseId);
+    return notes;
+  };
+  createNotes = async (email: string, data: object) => {
+    const student = await this.studentRepo.findSafeStudentByEmail(email);
+    if (!student) {
+      throw new Error("Student not found");
+    }
+    const studentId = student._id.toString();
+    const notes = await this.studentRepo.createNote(studentId, data);
+    return notes;
+  };
+  updateNotes = async (email: string, id: string, data: object) => {
+    const student = await this.studentRepo.findSafeStudentByEmail(email);
+    if (!student) {
+      throw new Error("Student not found");
+    }
+    const studentId = student._id.toString();
+    const notes = await this.studentRepo.updateNotes(id, studentId, data);
+    return notes;
+  };
+  deleteNotes = async (email: string, id: string) => {
+    const student = await this.studentRepo.findSafeStudentByEmail(email);
+    if (!student) {
+      throw new Error("Student not found");
+    }
+    const studentId = student._id.toString();
+    const notes = await this.studentRepo.deleteNotes(id, studentId);
+    return notes;
+  };
+  updateNote = async (email: string, id: string, text:string,index:number ) => {
+    const student = await this.studentRepo.findSafeStudentByEmail(email);
+    if (!student) {
+      throw new Error("Student not found");
+    }
+    const studentId = student._id.toString();
+    const notes = await this.studentRepo.updateNote(id, studentId, text,index);
+    return notes;
+  };
+  deleteNote = async (email: string, id: string, index: number) => {
+    const student = await this.studentRepo.findSafeStudentByEmail(email);
+    if (!student) {
+      throw new Error("Student not found");
+    }
+    const studentId = student._id.toString();
+    const notes = await this.studentRepo.deleteNote(id, studentId,index);
+    return notes;
   }
 }

@@ -401,10 +401,10 @@ class InstructorController {
         .status(500)
         .json({ message: "Failed to fetch messages", error: error.message });
     }
-  }
+  };
   postMessage = async (req: IAuthenticatedRequest, res: Response) => {
     try {
-      console.log("in post message")
+      console.log("in post message");
       const { chatId, text } = req.body;
       const instructor = req.instructor;
 
@@ -437,7 +437,99 @@ class InstructorController {
         .status(500)
         .json({ message: "Failed to send message", error: error.message });
     }
-  }
+  };
+  getPendingPayment = async (req: IAuthenticatedRequest, res: Response) => {
+    try {
+      const instructor = req.instructor;
+
+      if (
+        !instructor ||
+        typeof instructor === "string" ||
+        !("email" in instructor)
+      ) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+
+      const email = instructor.email; // ✅ Safe to access now
+
+      const pendingPayments = await this.InstructorUseCase.getPendingPayment(
+        email
+      );
+      res.status(200).json({ success: true, data: pendingPayments });
+    } catch (error) {
+      console.log(error);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to fetch pending payments" });
+    }
+  };
+  updatePaypalEmail = async (req: IAuthenticatedRequest, res: Response) => {
+    try {
+      const instructor = req.instructor;
+      if (
+        !instructor ||
+        typeof instructor === "string" ||
+        !("email" in instructor)
+      ) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+
+      const email = instructor.email;
+      const { paypalEmail } = req.body;
+      if (!paypalEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "PayPal email is required",
+        });
+      }
+      const updated = await this.InstructorUseCase.updatePaypalEmail(
+        email,
+        paypalEmail
+      );
+      res.status(200).json({ success: true, data: updated });
+    } catch (error) {
+      console.log(error);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to update PayPal email" });
+    }
+  };
+
+  requestPayout = async (req: IAuthenticatedRequest, res: Response) => {
+    try {
+      const instructor = req.instructor;
+
+      if (
+        !instructor ||
+        typeof instructor === "string" ||
+        !("email" in instructor)
+      ) {
+        throw new Error("Invalid token payload: Email not found");
+      }
+
+      const instructorMail = instructor.email;
+
+      const instructordata = await this.InstructorUseCase.getProfile(instructorMail);
+      if (!instructordata || !instructordata.paypalEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "PayPal email is not set. Please update your profile.",
+        });
+      }
+
+      const paypalEmail = instructordata.paypalEmail;
+      const payoutData = await this.InstructorUseCase.requestPayout(
+        instructorMail,
+        paypalEmail
+      );
+      res.status(200).json({ success: true, data: payoutData });
+    } catch (error) {
+      console.log(error);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to request payout" });
+    }
+  };
 }
 
 
