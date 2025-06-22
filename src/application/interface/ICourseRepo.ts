@@ -1,6 +1,6 @@
 import { Course } from "../../domain/entities/Course";
 import { ICourse } from "../../infrastructure/database/models/CourseModel";
-import { CreateCourseDTO } from "../useCase/InstructorUseCase";
+import { CreateCourseDTO } from "./Dto/courseDto"; 
 
 export interface FilteredCoursesResult {
   courses: Course[]; // make sure you have a Course interface defined

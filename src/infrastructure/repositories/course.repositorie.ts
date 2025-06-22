@@ -1,7 +1,7 @@
 import mongoose, { Model } from "mongoose";
 import { ICourse } from "../database/models/CourseModel";
 import ICourseRepo from "../../application/interface/ICourseRepo";
-import { CreateCourseDTO } from "../../application/useCase/InstructorUseCase";
+import { CreateCourseDTO } from "../../application/interface/Dto/courseDto"; 
 import { LanguageModel } from "../database/models/LanguageModel";
 import { CategoryModel } from "../database/models/CategoryModel";
 
