@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
 
-export interface IStudents extends Document {
+export interface IStudent extends Document {
+  _id:Types.ObjectId,
   email: string;
   password: string;
   isBlocked: boolean;
@@ -13,13 +14,12 @@ export interface IStudents extends Document {
   profileImage?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
-  _id: Types.ObjectId;
 }
 
-const StudentsSchema: Schema = new Schema(
+const StudentsSchema: Schema = new Schema<IStudent>(
   {
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true, select: false }, 
+    password: { type: String, select: false }, 
     isBlocked: { type: Boolean, default: false },
     firstName: { type: String, required: true, default: "unknown" },
     lastName: { type: String },
@@ -34,6 +34,6 @@ const StudentsSchema: Schema = new Schema(
   }
 );
 
-const StudentModel = mongoose.model<IStudents>("Students", StudentsSchema);
+const StudentModel = mongoose.model<IStudent>("Students", StudentsSchema);
 
 export default StudentModel;

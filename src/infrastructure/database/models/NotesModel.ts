@@ -5,17 +5,17 @@ export interface INotes extends Document {
   title: String | null;
   notes: String[] | null;
   student_id: ObjectId | null;
-  coruse_id: String | null;
+  course_id: String | null;
 }
 
-const NotesSchema: Schema = new Schema({
+const NotesSchema: Schema = new Schema<INotes>({
   title: { type: String },
   notes: [{ type: String,  }],
   student_id: { type: Schema.Types.ObjectId },
   course_id: { type: String },
 });
 
-const Notes = mongoose.model<INotes>('Notes', NotesSchema);
+const NotesModel = mongoose.model<INotes>('Notes', NotesSchema);
 
-export default Notes;
+export default NotesModel;
 

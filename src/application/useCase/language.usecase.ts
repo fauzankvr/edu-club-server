@@ -1,30 +1,46 @@
-import { LanguageRepository } from "../../infrastructure/repositories/language.repository";
-
+import { ILanguage } from "../../infrastructure/database/models/LanguageModel"; 
+import { ILanguageRepo } from "../interface/ILanguageRepository";
 
 export class LanguageUseCase {
-    constructor(private languageRepository: LanguageRepository) { }
-    async create(languageData: any) {
-        try {
-            const result = await this.languageRepository.create(languageData);
-            return result;
-        } catch (error) {
-            throw new Error("Error creating language: " + error);
-        }
+  constructor(private readonly languageRepository: ILanguageRepo) {}
+
+  async createLanguage(languageData: ILanguage): Promise<ILanguage> {
+    return this.languageRepository.create(languageData);
+  }
+
+  async getAllLanguages(): Promise<ILanguage[]> {
+    return this.languageRepository.findAll();
+  }
+
+  async getNotBlockedLanguages(): Promise<ILanguage[]> {
+    return this.languageRepository.findNotBlocked();
+  }
+
+  async updateLanguage(
+    id: string,
+    data: Partial<ILanguage>
+  ): Promise<ILanguage> {
+    const updatedLanguage = await this.languageRepository.update(id, data);
+    if (!updatedLanguage) {
+      throw new Error("Language not found");
     }
-    async getAll() {
-        try {
-            const result = await this.languageRepository.getAll();
-            return result;
-        } catch (error) {
-            throw new Error("Error fetching languages: " + error);
-        }
+    return updatedLanguage;
+  }
+
+  async toggleBlockStatus(id: string): Promise<ILanguage> {
+    const language = await this.languageRepository.findById(id);
+    if (!language) {
+      throw new Error("Language not found");
     }
-    async update(id: string) {
-        try {
-            const result = await this.languageRepository.update(id);
-            return result;
-        } catch (error) {
-            throw new Error("Error updating language: " + error);
-        }
+
+    const updatedLanguage = await this.languageRepository.update(id, {
+      isBlocked: !language.isBlocked,
+    });
+
+    if (!updatedLanguage) {
+      throw new Error("Failed to toggle block status");
     }
+
+    return updatedLanguage;
+  }
 }

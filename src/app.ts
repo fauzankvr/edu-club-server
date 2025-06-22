@@ -2,17 +2,19 @@ import express, { Application } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./infrastructure/config/db";
-import studentRoutes from "./interfaces/routes/studentRoutes";
-import InstructorRoutes from "./interfaces/routes/instructorRoutes";
+import studentRoutes from "./interfaces/routes/student.routes";
+import InstructorRoutes from "./interfaces/routes/instructou.routes";
 import LanguageRoutes from "./interfaces/routes/admin.language.routes";
 import CategoryRoutes from "./interfaces/routes/admin.category.routes";
-import AdminRoutes from "./interfaces/routes/adminRoutes";
+import AdminRoutes from "./interfaces/routes/admin.routes";
 import cookieParser from "cookie-parser";
 import http from "http";
 import { Server } from "socket.io";
-import { setupSocket } from "./infrastructure/services/websoket";
+// import { setupSocket } from "./infrastructure/services/websoket";
 import rateLimit from "express-rate-limit";
 import path from "path";
+import { setupChatSocket } from "./infrastructure/services/chatSocket";
+import { setupVideoSocket } from "./infrastructure/services/videoSocket";
 
 dotenv.config();
 const app: Application = express();
@@ -36,7 +38,7 @@ app.use(express.static("uploads"));
 
 const limiter = rateLimit({
   windowMs: 2 * 60 * 1000, // 2 minutes
-  max: 90,
+  max: 120,
   message: {
     success: false,
     message: "Too many requests. Please try again later.",
@@ -60,7 +62,8 @@ const io = new Server(server, {
 });
 
 //  Initialize socket
-setupSocket(io);
+setupChatSocket(io);
+setupVideoSocket(io);
 
 //  Routes
 app.use("/instructor", InstructorRoutes);

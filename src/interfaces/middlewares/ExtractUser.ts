@@ -1,6 +1,8 @@
 import { Response, Request, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import StudentModel from "../../infrastructure/database/models/StudentModel";
+import { StatusCodes } from "../constants/statusCodes";
+import { STUDENT_NOT_FOUND, UNAUTHORIZED } from "../constants/responseMessage";
 
 export interface IAuthanticatedRequest extends Request {
   student?: string | JwtPayload;
@@ -17,19 +19,22 @@ export const verifyStudent = async (
 ): Promise<void> => {
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (!token) {
-    res.status(401).json({ message: "Unauthorized: No token provided" });
+    res.status(StatusCodes.UNAUTHORIZED).json({ message: UNAUTHORIZED });
     return;
   }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
     req.student = decoded;
+    if(decoded.role!=="student") {
+      res.status(StatusCodes.UNAUTHORIZED).json({ message: UNAUTHORIZED });
+      return;
+    }
 
     const student = await StudentModel.findOne({ email: decoded.email });
 
     if (!student) {
-      res.status(404).json({ message: "Student not found" });
-      
+      res.status(404).json({ message: STUDENT_NOT_FOUND });
       return;
     }
 

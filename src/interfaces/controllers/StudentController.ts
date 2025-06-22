@@ -6,8 +6,15 @@ import { captureOrderService, createOrderService } from "../../infrastructure/se
 import { IStudents } from "../../infrastructure/database/models/StudentModel";
 import { IReply } from "../../application/interface/IDiscussion";
 import { GoogleAuthServiceImpl } from "../../infrastructure/services/googleAuthServiceImpl";
-import { StudentRepository } from "../../infrastructure/repositories/StudentRepositorie";
+import { StudentRepository } from "../../infrastructure/repositories/student.repository";
 import { IAuthenticatedRequest } from "../middlewares/ExtractInstructor";
+
+interface GoogleUser {
+  name: string;
+  email: string;
+  picture: string;
+  googleId: string;
+}
 
 class StudentController {
   constructor(private StudentUseCase: StudentUseCase) {}
@@ -31,39 +38,7 @@ class StudentController {
     }
   };
 
-  getStudent = async (req: IAuthanticatedRequest, res: Response) => {
-    try {
-      const studentEmail = req.student;
-      if (
-        !studentEmail ||
-        typeof studentEmail === "string" ||
-        !("email" in studentEmail)
-      ) {
-        throw new Error("Invalid token payload: Email not found");
-      }
-
-      if (!studentEmail) {
-        return res
-          .status(401)
-          .json({ success: false, message: "Unauthorized" });
-      }
-
-      const student = await this.StudentUseCase.getProfile(studentEmail.email);
-      if (!student) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Student not found" });
-      }
-
-      res.status(200).json({
-        success: true,
-        data: student,
-      });
-    } catch (error) {
-      console.error("Error fetching student:", error);
-      res.status(500).json({ success: false, message: "Server error" });
-    }
-  };
+  
 
   loginStudent = async (req: Request, res: Response) => {
     const { email, password } = req.body;
@@ -99,17 +74,23 @@ class StudentController {
 
   googleLoginController = async (req: Request, res: Response) => {
     const { token } = req.body;
-
+    if (!token) {
+      return res.status(400).json({ success: false, error: 'Google token is missing' });
+    }
     const authService = new GoogleAuthServiceImpl();
-    const studentRepo = new StudentRepository();
 
     try {
-      // const { jwt, success } = await googleLoginUseCase(
-      //   token,
-      //   authService,
-      //   studentRepo
-      // );
-      // res.json({ success, accessToken: jwt });
+      const {    message,
+        accessToken,
+        refreshToken, } = await this.StudentUseCase.googleLoginUseCase(
+        token,
+        authService
+      );
+      res.json({
+        success: true,
+        message,
+        accessToken,
+        refreshToken, });
     } catch (err) {
       res
         .status(401)
@@ -290,31 +271,7 @@ class StudentController {
     }
   };
 
-  updateProfile = async (req: IAuthanticatedRequest, res: Response) => {
-    try {
-      console.log("iam in update profile");
-      const student = req.student;
-      const updateData = req.body;
-      const imageUrl = req.file?.path;
-      if (req.file) {
-        // updateData.profileImage = req.file.filename;
-        updateData.profileImage = imageUrl;
-      }
-      if (!student || typeof student === "string" || !("email" in student)) {
-        throw new Error("Invalid token payload: Email not found");
-      }
-
-      console.log("My email:", student.email);
-      const result = this.StudentUseCase.updateProfile(
-        student.email,
-        updateData
-      );
-      res.status(200).json({ success: true });
-    } catch (error) {
-      console.log(error);
-      res.status(500).json({ message: "Something went wrong updating" });
-    }
-  };
+  
 
   createOrderController = async (req: IAuthanticatedRequest, res: Response) => {
     try {
@@ -527,30 +484,7 @@ class StudentController {
     }
   };
 
-  getCarriculam = async (req: Request, res: Response) => {
-    try {
-      const courseId = req.params.courseId;
-      if (!courseId) {
-        return res.status(400).json({ message: "Course ID is required" });
-      }
-
-      // Call use case to get curriculum
-      const curriculum = await this.StudentUseCase.getCarriculamTopics(
-        courseId
-      );
-
-      if (!curriculum) {
-        return res
-          .status(404)
-          .json({ message: "Curriculum not found for this course" });
-      }
-
-      return res.status(200).json({ success: true, curriculum });
-    } catch (error: any) {
-      console.error("Error fetching curriculum:", error.message);
-      return res.status(500).json({ message: "Failed to fetch curriculum" });
-    }
-  };
+  
 
   geminiChat = async (req: Request, res: Response): Promise<void> => {
     try {

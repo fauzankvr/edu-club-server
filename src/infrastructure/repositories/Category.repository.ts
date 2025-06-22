@@ -1,29 +1,26 @@
-import { ICategory } from "../../application/interface/ICategory";
+
+import { Model } from "mongoose";
 import { ICategoryRepository } from "../../application/interface/ICategoryRepo";
-import { CategoryModel } from "../database/models/CategoryModel";
+import { ICategory } from "../database/models/CategoryModel";
+import { BaseRepository } from "./base.repository"; 
 
 
-export class CategoryRepository implements ICategoryRepository {
-  async create(categoryData: ICategory): Promise<ICategory> {
-    const result = await CategoryModel.create(categoryData);
-    return result as ICategory;
+export class CategoryRepository
+  extends BaseRepository<ICategory>
+  implements ICategoryRepository
+{
+  constructor(private CategoryModel: Model<ICategory>) {
+    super(CategoryModel);
   }
-  async getAll(): Promise<ICategory[]> {
-    const result = await CategoryModel.find();
-    return result as ICategory[];
+  async update(id: string, data: ICategory): Promise<ICategory | null> {
+    return await this.CategoryModel.findByIdAndUpdate(id, data, {
+      new: true,
+    });
   }
-  async update(id: string): Promise<ICategory> {
-    const category = await CategoryModel.findById(id);
-
-    if (!category) {
-      throw new Error("Category not found");
-    }
-
-    // Toggle the isBlocked field
-    category.isBlocked = !category.isBlocked;
-    await category.save();
-
-    return category as ICategory;
-    }
-    
+  async findNotBlocked(): Promise<ICategory[]> {
+    return await this.CategoryModel.find({isBlocked:false})
+  }
+  async findByName(name:string):Promise<ICategory|null>{
+    return await this.CategoryModel.findOne({name})
+  }
 }

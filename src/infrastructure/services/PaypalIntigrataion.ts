@@ -8,7 +8,7 @@ import {
 } from "@paypal/paypal-server-sdk";
 import Course, { ICourse } from "../database/models/CourseModel";
 import OrderModel from "../database/models/OrderModel";
-import StudentModel, { IStudents } from "../database/models/StudentModel";
+import StudentModel, { IStudent } from "../database/models/StudentModel";
 import TransactionModel from "../database/models/Transaction";
 import { ObjectId, Types } from "mongoose"; // Added Types import for ObjectId validation
 import { WishlistModel } from "../database/models/WishlistModel";
@@ -49,7 +49,7 @@ export const createOrderService = async (cart: any, userEmail: string) => {
 
   // Fetch user
   const user = (await StudentModel.findOne({ email: userEmail })) as
-    | (Document & IStudents & { _id: ObjectId })
+    | (Document & IStudent & { _id: ObjectId })
     | null;
   if (!user) throw new Error("User not found");
 

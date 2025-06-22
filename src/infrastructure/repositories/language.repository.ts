@@ -1,28 +1,20 @@
-import { ILanguage } from "../../application/interface/ILanguage";
-import { ILanguageRepository } from "../../application/interface/ILanguageRepository";
-import { LanguageModel } from "../database/models/LanguageModel";
+import { Model } from "mongoose";
+import { UpdateCategoryDTO } from "../../application/interface/Dto/CatetoryDto";
+import { ILanguage } from "../database/models/LanguageModel"; 
+import { ILanguageRepo } from "../../application/interface/ILanguageRepository";
+import { BaseRepository } from "./base.repository"; 
 
-export class LanguageRepository implements ILanguageRepository {
-  async create(languageData: ILanguage): Promise<ILanguage> {
-    const result = await LanguageModel.create(languageData);
-    return result as ILanguage;
-    }
-    async getAll(): Promise<ILanguage[]> {
-        const result = await LanguageModel.find();
-        return result as ILanguage[];
-    }
-    async update(id: string): Promise<ILanguage> {
-        const language = await LanguageModel.findById(id);
-
-        if (!language) {
-          throw new Error("Language not found");
-        }
-
-        // Toggle the isBlocked field
-        language.isBlocked = !language.isBlocked;
-        await language.save();
-
-        return language as ILanguage;
-    }
+export class LanguageRepository extends BaseRepository<ILanguage> implements ILanguageRepo {
+  constructor(private LanguageModal: Model<ILanguage>) {
+    super(LanguageModal)
+  }
+   async update(id: string, data: UpdateCategoryDTO): Promise<ILanguage|null> {
+       return await this.LanguageModal.findByIdAndUpdate(id, data, {
+         new: true,
+       });
+  }
+  findNotBlocked(): Promise<ILanguage[]> {
+    return this.LanguageModal.find({ isBlocked: false });
+  }
     
 }

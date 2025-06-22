@@ -38,4 +38,6 @@ const CurriculumSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-export default mongoose.model<ICurriculum>("Curriculum", CurriculumSchema);
+const CurriculumModel = mongoose.model<ICurriculum>("Curriculum", CurriculumSchema);
+
+export default CurriculumModel;

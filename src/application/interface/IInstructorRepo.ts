@@ -1,42 +1,20 @@
-import { Instructor } from "../../domain/entities/Instructor"
-import { ISection } from "../../infrastructure/database/models/CarriculamModel";
-import { ICourse } from "../../infrastructure/database/models/CourseModel";
+import { Instructor } from "../../domain/entities/Instructor";
 import { IInstructor } from "../../infrastructure/database/models/InstructorModel";
-import { IinstructorOtp } from "../../infrastructure/database/models/InstructorOtp";
-import { CreateCourseDTO } from "../useCase/InstructorUseCase";
+import { IBaseRepo } from "./IBaseRepo";
 
-
-interface IInstructorRepo {
-  crateInstructor(instructor: Instructor): Promise<object>;
-  findInstrucotrByEmail(email: string): Promise<IInstructor | null>;
+export default interface IInstructorRepo extends IBaseRepo<IInstructor> {
+  createInstructor(instructor: Instructor): Promise<IInstructor>;
   findById(id: string): Promise<IInstructor | null>;
-  findSafeInstructorByEmail(email: string): Promise<IInstructor>;
-  updateProfileByEmail(email: string, updateData: object): Promise<boolean>;
-  getAllCourses(email: any): Promise<any[]>;
-  getCoureById(id: string): Promise<any>;
-  updateCourseById(id: string, updateData: object): Promise<any>;
-  getCurriculamByCourseId(id: string): Promise<any>;
-
-  saveCurriculum(
-    courseId: string,
-    instructor: string,
-    sections: ISection[]
-  ): Promise<boolean>;
-
-  findOtp(email: string): Promise<IinstructorOtp | null>;
-  deleteOtp(email: string): Promise<boolean>;
-  findAllInstructors(): Promise<any[]>;
-  blockInstructor(email: string): Promise<boolean>;
-  saveOtp(email: string, otp: string): Promise<object>;
-
-  createCourse(courseData: CreateCourseDTO): Promise<object>;
-
-  getAllChats(id: string): Promise<any[]>;
-  getAllMessages(id: string): Promise<any[]>;
-  postMessage(data: object): Promise<any>;
-
-  getPendingPayment(email: string): Promise<any[]>;
-  updatePaypalEmail(email: string, updateData: string): Promise<boolean>;
+  findInstructorByEmail(email: string): Promise<IInstructor | null>;
+  findAllInstructors(): Promise<IInstructor[]>;
+  findSafeInstructorByEmail(email: string): Promise<IInstructor | null>;
+  updateProfileByEmail(
+    email: string,
+    updateData: Partial<IInstructor>
+  ): Promise<IInstructor | null>;
+  getAllStudents(): Promise<IInstructor[]>;
+  updatePaypalEmail(
+    email: string,
+    paypalEmail: string
+  ): Promise<{ modifiedCount: number }>;
 }
-
-export default IInstructorRepo

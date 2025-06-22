@@ -27,6 +27,6 @@ const InstructorSchema: Schema = new Schema({
   paypalEmail: { type: String, default: "" },
 });
 
-const Instructor = mongoose.model<IInstructor>("Instructor", InstructorSchema);
+const InstructorModal = mongoose.model<IInstructor>("Instructor", InstructorSchema);
 
-export default Instructor;
+export default InstructorModal;

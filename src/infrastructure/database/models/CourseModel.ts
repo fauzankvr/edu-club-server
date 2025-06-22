@@ -1,6 +1,7 @@
-import mongoose, { Schema, Document, ObjectId } from "mongoose";
+import mongoose, { Schema, Document, ObjectId, Types } from "mongoose";
 
 export interface ICourse extends Document {
+  _id: Types.ObjectId;
   title: string;
   description: string;
   language: string;
@@ -10,7 +11,8 @@ export interface ICourse extends Document {
   price: number;
   discount: string | null;
   students: ObjectId[] | null;
-  instructor:string|null
+  instructor: string | null
+  isBlocked?: boolean;
 }
 
 const CourseSchema: Schema = new Schema({
@@ -23,9 +25,10 @@ const CourseSchema: Schema = new Schema({
   price: { type: Number, required: true },
   discount: { type: String },
   students: [{ type: Schema.Types.ObjectId }],
-  instructor: { type: String},
+  instructor: { type: String },
+  isBlocked: { type: Boolean, default: false },
 });
 
-const Course = mongoose.model<ICourse>("Course", CourseSchema);
+const CourseModel = mongoose.model<ICourse>("Course", CourseSchema);
 
-export default Course;
+export default CourseModel;

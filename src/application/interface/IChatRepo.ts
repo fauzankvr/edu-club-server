@@ -8,12 +8,4 @@ export interface IChatRepo {
   findChatsByUserId(userId: string): Promise<Chat[]>;
   findChatsByInstructorId(instructorId: string): Promise<Chat[]>;
   updateChat(id: string, data: Partial<Chat>): Promise<Chat>;
-
-  // Message-related methods
-  createMessage(data: {
-    text: string;
-    sender: string;
-    chatId: string;
-  }): Promise<Message>;
-  findMessagesByChatId(chatId: string): Promise<Message[]>;
 }

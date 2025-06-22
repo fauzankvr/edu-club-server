@@ -1,16 +1,20 @@
 import mongoose, { Schema, Document } from "mongoose";
-import { Chat } from "../../../domain/entities/Chat";
 
-// Fix: omit `id` from the Chat type to avoid conflict with Mongoose
-type ChatDoc = Omit<Chat, "id"> & Document;
+export interface IChat extends Document {
+  userId: string;
+  instructorId: string;
+  userLastSeen?: Date;
+  instructorLastSeen?: Date;
+}
 
-const ChatSchema = new Schema<ChatDoc>(
+const ChatSchema = new Schema<IChat>(
   {
     userId: { type: String, required: true },
     instructorId: { type: String, required: true },
-    lastMessageAt: { type: Date },
+    userLastSeen: { type: Date },
+    instructorLastSeen: { type: Date },
   },
   { timestamps: true }
 );
 
-export const ChatModel = mongoose.model<ChatDoc>("Chat", ChatSchema);
+export const ChatModel = mongoose.model<IChat>("Chat", ChatSchema);

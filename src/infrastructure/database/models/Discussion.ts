@@ -4,7 +4,7 @@ import { IDiscussion, IReply } from "../../../application/interface/IDiscussion"
 
 // ---------- Reply Schema ----------
 const ReplySchema = new Schema<IReply>({
-  discussionId: { type: String, require: true },
+  discussionId: { type: String, required: true },
   userId: { type: Schema.Types.ObjectId, ref: "Students", required: true },
   text: { type: String, required: true },
   likes: { type: Number, default: 0 },
@@ -17,7 +17,7 @@ const ReplySchema = new Schema<IReply>({
 // ---------- Discussion Schema ----------
 const DiscussionSchema = new Schema<IDiscussion>({
   studentId: { type: Schema.Types.ObjectId, ref: "Students", required: true },
-  courseId: { type: String, require: true },
+  courseId: { type: String, required: true },
   text: { type: String, required: true },
   likes: { type: Number, default: 0 },
   dislikes: { type: Number, default: 0 },

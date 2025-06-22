@@ -34,8 +34,11 @@ export class InstructorUseCase {
   async generateRefreshToken(refreshToken: string) {
     const decoded = verifyRefreshToken(refreshToken);
     const accessToken = generateAccessToken({
-      email: decoded.email,
-      id: decoded.id,
+      {
+        email: decoded.email,
+        id: decoded.id,
+        role: "instructor"
+      }
     });
     return accessToken;
   }
@@ -75,8 +78,7 @@ export class InstructorUseCase {
     }
 
     const id = createdInstructor?._id?.toString();
-    console.log("created instructor", createdInstructor);
-    console.log("id", id);
+
     // Generate tokens
     const payload = { email, id };
     const accessToken = generateAccessToken(payload);
@@ -109,63 +111,7 @@ export class InstructorUseCase {
       refreshToken,
     };
   }
-  async createNewCourse(data: CreateCourseDTO): Promise<object> {
-    const course = new Course(
-      data.title,
-      data.description,
-      data.language,
-      data.category,
-      data.courseImageId,
-      data.points,
-      data.price,
-      data.discount,
-      data.students,
-      data.instructor
-    );
-
-    if (!course.isValid()) throw new Error("Invalid course data");
-    console.log(course);
-    const res = await this.instructorRepo.createCourse(course);
-    return res;
-  }
-
-  async saveCurriculum(
-    courseId: string,
-    instructor: string,
-    sections: ISection[],
-    videoFiles: Express.Multer.File[],
-    pdfFiles: Express.Multer.File[]
-  ): Promise<boolean> {
-    try {
-      // Assign video and pdf file paths to their corresponding lectures
-      sections.forEach((section, sIndex) => {
-        section.lectures.forEach((lecture, lIndex) => {
-          // Match video files
-          const videoFile = videoFiles.find(
-            (file) => file.originalname === `video_s${sIndex}_l${lIndex}.mp4`
-          );
-          const pdfFile = pdfFiles.find(
-            (file) => file.originalname === `pdf_s${sIndex}_l${lIndex}.pdf`
-          );
-
-          if (videoFile) {
-            lecture.videoPath = videoFile.path;
-          } else if (pdfFile) {
-            lecture.pdfPath = pdfFile.path;
-          }
-        });
-      });
-
-      // Now call the CurriculumRepo to save it
-      await this.instructorRepo.saveCurriculum(courseId, instructor, sections);
-
-      return true;
-    } catch (error) {
-      console.error("Error saving curriculum:", error);
-      throw new Error("Failed to save curriculum");
-    }
-  }
-
+  
   async getProfile(email: any): Promise<IInstructor> {
     const instructorData = await this.instructorRepo.findInstrucotrByEmail(
       email
@@ -186,91 +132,7 @@ export class InstructorUseCase {
     }
     return instructorData;
   }
-  async getAllCourses(email: any) {
-    console.log("Getting all courses from usecase");
-    const courses = await this.instructorRepo.getAllCourses(email);
+  
 
-    if (!courses) {
-      throw new Error("Failed to retrieve courses");
-    }
-
-    return courses;
-  }
-  async getCourseById(id: string) {
-    const res = await this.instructorRepo.getCoureById(id);
-    if (!res) {
-      throw new Error("Faild to retrive course");
-    }
-    return res;
-  }
-
-  async updateCourse(id: string, updateData: any) {
-    const course = await this.instructorRepo.getCoureById(id);
-
-    if (!course) {
-      throw new Error("Course not found");
-    }
-
-    const updated = await this.instructorRepo.updateCourseById(id, updateData);
-
-    if (!updated) {
-      throw new Error("Failed to update course");
-    }
-
-    return updated;
-  }
-  async getCurriculam(id: string) {
-    const curriculum = await this.instructorRepo.getCurriculamByCourseId(id);
-
-    if (!curriculum) {
-      throw new Error("Failed to retrieve curriculum");
-    }
-
-    return curriculum;
-  }
-  async getAllChats(id: string) {
-    const chats = await this.instructorRepo.getAllChats(id);
-    if (!chats) {
-      throw new Error("Failed to retrieve chats");
-    }
-    return chats;
-  }
-  async getAllMessages(id: string) {
-    const messages = this.instructorRepo.getAllMessages(id);
-    if (!messages) {
-      throw new Error("Failed to retrieve messages");
-    }
-    return messages;
-  }
-  postMessage(chatId: string, text: string, id: string) {
-    const data = {
-      text,
-      sender: id,
-      chatId,
-    };
-    const chat = this.instructorRepo.postMessage(data);
-    if (!chat) {
-      throw new Error("Failed to post message");
-    }
-    return chat;
-  }
-  getPendingPayment(email: string) {
-    const res = this.instructorRepo.getPendingPayment(email);
-    if (!res) {
-      throw new Error("Failed to retrieve pending payments");
-    }
-    return res;
-  }
-  updatePaypalEmail(email: string, paypalEmail: string) {
-    const updated = this.instructorRepo.updateProfileByEmail(email, {
-      paypalEmail,
-    });
-    if (!updated) {
-      throw new Error("Failed to update PayPal email");
-    }
-    return updated;
-  }
-  async requestPayout(instructorMail: string, paypalEmail: string) {
-    return await requestPayoutService(instructorMail, paypalEmail);
-  }
+  
 }

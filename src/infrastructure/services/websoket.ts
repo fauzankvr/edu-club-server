@@ -1,5 +1,12 @@
+// server/socket.ts
 import { Server, Socket } from "socket.io";
-import { v4 as uuidv4 } from "uuid"; // For generating unique message IDs
+import { MessageModel } from "../database/models/MessageModel";
+import { ChatModel } from "../database/models/ChatModel";
+import { CallHistoryModel } from "../database/models/CallHistoryModel";
+import mongoose from "mongoose";
+
+const userSocketMap = new Map<string, string>(); // userId -> socketId
+const socketUserMap = new Map<string, string>(); // socketId -> userId
 
 interface Message {
   id: string;
@@ -7,204 +14,289 @@ interface Message {
   sender: string;
   text: string;
   createdAt: string;
-}
-
-interface RoomData {
-  users: Set<string>;
-  instructorId?: string;
-}
-
-interface CallRecord {
-  callerId: string;
-  callerName: string;
-  timestamp: string;
-  roomId: string;
+  seenBy: string[];
 }
 
 export const setupSocket = (io: Server) => {
-  const rooms: Map<string, RoomData> = new Map();
-  const callHistory: Map<string, CallRecord[]> = new Map();
-
   io.on("connection", (socket: Socket) => {
     console.log(`User connected: ${socket.id}`);
 
     let userRole: string | undefined;
-
-    socket.on("set-role", (role: string) => {
-      userRole = role;
-      console.log(`User ${socket.id} set role: ${role}`);
-      socket.emit("role-set", role);
-    });
-
-    const joinRoom = (roomId: string) => {
-      if (!rooms.has(roomId)) {
-        rooms.set(roomId, { users: new Set() });
-      }
-      const room = rooms.get(roomId)!;
-      room.users.add(socket.id);
-      if (userRole === "instructor") {
-        room.instructorId = socket.id;
-        if (callHistory.has(roomId)) {
-          socket.emit("call-history", callHistory.get(roomId)!);
-        }
-      }
-      socket.join(roomId);
-      console.log(`User ${socket.id} joined room ${roomId}`);
-    };
-
-    const leaveRoom = (roomId: string) => {
-      if (rooms.has(roomId)) {
-        const room = rooms.get(roomId)!;
-        room.users.delete(socket.id);
-        if (room.instructorId === socket.id) {
-          room.instructorId = undefined;
-        }
-        socket.leave(roomId);
-        console.log(`User ${socket.id} left room ${roomId}`);
-        if (room.users.size === 0) {
-          rooms.delete(roomId);
-        }
-      }
-    };
+    let userId: string | undefined;
 
     socket.on(
-      "join-room",
-      (callerName: string, roomId: string = "video-call-room") => {
-        if (!userRole) {
-          socket.emit("error", { error: "Role not set" });
+      "set-role",
+      ({ role, userId: id }: { role: string; userId: string }) => {
+        userRole = role;
+        userId = id;
+        userSocketMap.set(id, socket.id);
+        socketUserMap.set(socket.id, id);
+        socket.emit("role-set");
+        console.log(`${socket.id} set role: ${role}, userId: ${id}`);
+      }
+    );
+
+    socket.on("join-room", (roomId: string) => {
+      socket.join(roomId);
+      console.log(`${socket.id} joined room ${roomId}`);
+    });
+
+    socket.on(
+      "start-call",
+      async ({ callerName, callerId, receiverUserId, chatId, roomId }: {
+        callerName: string;
+        callerId: string;
+        receiverUserId: string;
+        chatId: string;
+        roomId: string;
+      }) => {
+        if (userRole !== "student") {
+          socket.emit("error", { error: "Only students can start calls" });
           return;
         }
 
-        joinRoom(roomId);
-
-        if (userRole === "student") {
-          const callRecord: CallRecord = {
-            callerId: socket.id,
-            callerName: callerName || `User-${socket.id}`,
-            timestamp: new Date().toISOString(),
-            roomId,
-          };
-          if (!callHistory.has(roomId)) {
-            callHistory.set(roomId, []);
-          }
-          callHistory.get(roomId)!.push(callRecord);
-
-          const room = rooms.get(roomId);
-          if (room?.instructorId) {
-            io.to(room.instructorId).emit(
-              "call-history",
-              callHistory.get(roomId)!
-            );
-          }
+        const receiverSocketId = userSocketMap.get(receiverUserId);
+        if (!receiverSocketId) {
+          socket.emit("instructor-offline");
+          return;
         }
 
-        socket.to(roomId).emit("user-joined", socket.id);
+        try {
+          await CallHistoryModel.findOneAndUpdate(
+            {
+              callerId,
+              receiverId: receiverUserId,
+              startedAt: { $gte: new Date(Date.now() - 2 * 60 * 1000) },
+            },
+            {
+              $setOnInsert: {
+                roomId,
+                callerId,
+                callerName: callerName || `User-${callerId}`,
+                receiverId: receiverUserId,
+                receiverName: `Instructor-${receiverUserId}`,
+                startedAt: new Date(),
+                chatId,
+              },
+            },
+            { upsert: true }
+          );
+        } catch (err) {
+          console.error("Error saving call history:", err);
+        }
+
+        socket.join(roomId);
+        io.to(receiverSocketId).emit("incoming-call", {
+          fromUserId: callerId,
+          name: callerName,
+          chatId,
+          roomId,
+        });
+        console.log(
+          `Call from ${callerId} to ${receiverUserId} in room ${roomId}`
+        );
       }
     );
 
-    socket.on("leave-room", (roomId: string) => {
-      leaveRoom(roomId);
-      socket.to(roomId).emit("user-left", socket.id);
-    });
+    socket.on(
+      "signal",
+      ({
+        type,
+        data,
+        targetUserId,
+        roomId,
+      }: {
+        type: string;
+        data: any;
+        targetUserId: string;
+        roomId: string;
+      }) => {
+        const senderUserId = socketUserMap.get(socket.id);
+        if (!senderUserId) {
+          socket.emit("error", { error: "Invalid sender" });
+          return;
+        }
 
-    socket.on("offer", (offer: RTCSessionDescriptionInit, targetId: string) => {
-      console.log(`Offer sent from ${socket.id} to ${targetId}`);
-      io.to(targetId).emit("offer", offer, socket.id);
+        const targetSocketId = userSocketMap.get(targetUserId);
+        if (targetSocketId) {
+          io.to(targetSocketId).emit("signal", {
+            type,
+            data,
+            fromUserId: senderUserId,
+            roomId,
+          });
+          console.log(
+            `Signal ${type} from ${senderUserId} to ${targetUserId} in room ${roomId}`
+          );
+        } else {
+          socket.emit("error", { error: "Target user not online" });
+        }
+      }
+    );
+
+    socket.on(
+      "call-accepted",
+      ({ toUserId, roomId }: { toUserId: string; roomId: string }) => {
+        const targetSocketId = userSocketMap.get(toUserId);
+        if (targetSocketId) {
+          io.to(targetSocketId).emit("call-accepted", { roomId });
+          socket.join(roomId);
+          console.log(
+            `Call accepted by ${userId} for ${toUserId} in room ${roomId}`
+          );
+        }
+      }
+    );
+
+    socket.on("reject-call", ({ toUserId }: { toUserId: string }) => {
+      const targetSocketId = userSocketMap.get(toUserId);
+      if (targetSocketId) {
+        io.to(targetSocketId).emit("call-rejected", {
+          message: "Call rejected by instructor",
+        });
+        console.log(`Call rejected for ${toUserId}`);
+      }
     });
 
     socket.on(
-      "answer",
-      (answer: RTCSessionDescriptionInit, targetId: string) => {
-        console.log(`Answer sent from ${socket.id} to ${targetId}`);
-        io.to(targetId).emit("answer", answer);
+      "recall",
+      ({ targetUserId, roomId }: { targetUserId: string; roomId: string }) => {
+        if (userRole !== "instructor") {
+          socket.emit("error", { error: "Only instructors can recall" });
+          return;
+        }
+        const targetSocketId = userSocketMap.get(targetUserId);
+        if (targetSocketId) {
+          io.to(targetSocketId).emit("recall", {
+            fromUserId: userId,
+            roomId,
+          });
+          console.log(`Recall sent to ${targetUserId} for room ${roomId}`);
+        }
       }
     );
 
-    socket.on(
-      "ice-candidate",
-      (candidate: RTCIceCandidateInit, targetId: string) => {
-        console.log(`ICE candidate sent from ${socket.id} to ${targetId}`);
-        io.to(targetId).emit("ice-candidate", candidate);
+    const updateUnseenCount = async (chatId: string) => {
+      if (!mongoose.Types.ObjectId.isValid(chatId)) return;
+      const messages = await MessageModel.find({ chatId });
+      const chat = await ChatModel.findById(chatId);
+      if (chat) {
+        const userIds = [chat.userId, chat.instructorId];
+        for (const userId of userIds) {
+          const unseenCount = messages.filter(
+            (msg) => !msg.seenBy.includes(userId)
+          ).length;
+          io.to(chatId).emit("unseenCount", { chatId, count: unseenCount });
+        }
       }
-    );
+    };
 
-    socket.on("recall", (callerId: string) => {
-      if (userRole !== "instructor") {
-        socket.emit("error", { error: "Only instructors can recall" });
-        return;
-      }
-      const roomId = Array.from(socket.rooms).find(
-        (room) => room !== socket.id
-      );
-      if (!roomId) {
-        socket.emit("error", { error: "Not in a room" });
-        return;
-      }
-      io.to(callerId).emit("recall", roomId);
-      console.log(
-        `Instructor ${socket.id} recalled user ${callerId} in room ${roomId}`
-      );
-    });
-
-
-              /// Chat functionality //
-
-
-    socket.on("joinChat", (chatId: string) => {
+    socket.on("joinChat", async (chatId: string) => {
       socket.join(chatId);
-      console.log(`User ${socket.id} joined chat ${chatId}`);
+      console.log(`${socket.id} joined chat ${chatId}`);
+      const messages = await MessageModel.find({ chatId }).sort({
+        createdAt: 1,
+      });
+      const formattedMessages = messages.map((msg) => ({
+        id: msg.id.toString(),
+        chatId: msg.chatId,
+        text: msg.text,
+        sender: msg.sender,
+        createdAt: msg.createdAt.toISOString(),
+        seenBy: msg.seenBy,
+      }));
+      socket.emit("initialMessages", formattedMessages);
+      await updateUnseenCount(chatId);
     });
 
-    socket.on("sendMessage", (message: Message) => {
+    socket.on("sendMessage", async (message: Message) => {
       try {
         if (!message.chatId || !message.sender || !message.text) {
           socket.emit("error", { error: "Invalid message data" });
           return;
         }
-
-        // Create formatted message with unique ID
-        const formattedMessage: Message = {
-          id: uuidv4(), // Generate unique ID
+        const savedMessage = await MessageModel.create({
           chatId: message.chatId,
           sender: message.sender,
           text: message.text,
-          createdAt: new Date().toISOString(),
+          seenBy: [],
+        });
+        const messageToSend = {
+          id: savedMessage.id.toString(),
+          chatId: savedMessage.chatId,
+          sender: savedMessage.sender,
+          text: savedMessage.text,
+          createdAt: savedMessage.createdAt.toISOString(),
+          seenBy: savedMessage.seenBy,
         };
-
-        // Broadcast message to chat room
-        io.to(message.chatId).emit("newMessage", formattedMessage);
-        console.log(
-          `Message sent from ${message.sender} in chat ${message.chatId}: ${message.text}`
-        );
+        io.to(message.chatId).emit("newMessage", messageToSend);
+        await updateUnseenCount(message.chatId);
       } catch (error) {
-        console.error("Error processing message:", error);
+        console.error("Error sending message:", error);
         socket.emit("error", { error: "Failed to send message" });
       }
     });
 
-    socket.on("typing", (data: { chatId: string; sender: string }) => {
-      if (!data.chatId || !data.sender) {
-        socket.emit("error", { error: "Invalid typing data" });
-        return;
+    socket.on(
+      "messageSeen",
+      async ({ chatId, userId }: { chatId: string; userId: string }) => {
+        try {
+          const updatedMessages = await MessageModel.updateMany(
+            { chatId, seenBy: { $ne: userId } },
+            { $addToSet: { seenBy: userId } }
+          );
+
+          // Fetch updated messages to send to clients
+          const messages = await MessageModel.find({ chatId }).sort({
+            createdAt: 1,
+          });
+          const formattedMessages = messages.map((msg) => ({
+            id: msg.id.toString(),
+            chatId: msg.chatId,
+            text: msg.text,
+            sender: msg.sender,
+            createdAt: msg.createdAt.toISOString(),
+            seenBy: msg.seenBy,
+          }));
+
+          // Emit updated messages to all clients in the chat room
+          io.to(chatId).emit("messagesUpdated", formattedMessages);
+          await updateUnseenCount(chatId);
+        } catch (error) {
+          console.error("Error marking messages as seen:", error);
+        }
       }
-      socket.to(data.chatId).emit("typing", data);
-      console.log(`User ${data.sender} is typing in chat ${data.chatId}`);
+    );
+
+    socket.on(
+      "typing",
+      ({ chatId, sender }: { chatId: string; sender: string }) => {
+        if (!chatId || !sender) return;
+        socket.to(chatId).emit("typing", { chatId, sender });
+      }
+    );
+
+    socket.on(
+      "stopTyping",
+      ({ chatId, sender }: { chatId: string; sender: string }) => {
+        if (!chatId || !sender) return;
+        socket.to(chatId).emit("stopTyping", { chatId, sender });
+      }
+    );
+
+    socket.on("leave-room", (roomId: string) => {
+      socket.leave(roomId);
+      socket.broadcast.to(roomId).emit("user-left");
+      console.log(`${socket.id} left room ${roomId}`);
     });
 
-    socket.on("stopTyping", (data: { chatId: string; sender: string }) => {
-      if (!data.chatId || !data.sender) {
-        socket.emit("error", { error: "Invalid typing data" });
-        return;
+    socket.on("disconnect", () => {
+      console.log(`${socket.id} disconnected`);
+      if (userId) {
+        userSocketMap.delete(userId);
+        socketUserMap.delete(socket.id);
       }
-      socket.to(data.chatId).emit("stopTyping", data);
-      console.log(`User ${data.sender} stopped typing in chat ${data.chatId}`);
-    });
-
-    socket.on("disconnect", (reason) => {
-      console.log(`User disconnected: ${socket.id}, Reason: ${reason}`);
-      Array.from(socket.rooms)
-        .filter((room) => room !== socket.id)
-        .forEach((room) => leaveRoom(room));
     });
   });
-};
+ 
+}
