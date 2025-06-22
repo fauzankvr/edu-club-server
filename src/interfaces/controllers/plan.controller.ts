@@ -65,7 +65,17 @@ export class PlanController {
   async blockPlan(req: Request, res: Response): Promise<void> {
     try {
       const id = req.params.id;
-      const result = await this.planUseCase.blockPlan(id);
+      const plan = await this.planUseCase.getPlan(id)
+      if (!plan) {
+        res
+          .status(StatusCodes.NOT_FOUND)
+          .json(errorResponse("Plan not found"));
+        return;
+      }
+      // Directly update the isBlocked property on the plan document
+      plan.isBlocked = !plan.isBlocked;
+      const result = await this.planUseCase.updatePlans(id, plan);
+
       res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_PLAN_BLOCKED, result));

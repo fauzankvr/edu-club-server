@@ -1,5 +1,4 @@
-export interface UpdateLanguage
-DTO {
+export interface UpdateLanguageDto {
   name?: string;
   isBlocked?: boolean;
 }

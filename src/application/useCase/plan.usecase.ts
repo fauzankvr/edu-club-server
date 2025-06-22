@@ -23,16 +23,7 @@ export class PlanUseCase {
       return this.planRepo.updateById(id, data);
     }
   }
-  blockPlan(id: string) {
-    const plan = this.planRepo.findById(id);
-    if (!plan) throw new Error("Plan not found");
 
-    const updatedPlan = this.planRepo.updateById(id, {
-      isBlocked: !plan.isBlocked,
-    });
-    if (!updatedPlan) throw new Error("Plan not found");
-    return updatedPlan;
-  }
   getOrderedPlan(id: string) {
     return this.planCheckoutRepo.findPlanByUserId(id);
   }

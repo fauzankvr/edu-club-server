@@ -184,7 +184,7 @@ export const setupSocket = (io: Server) => {
         const userIds = [chat.userId, chat.instructorId];
         for (const userId of userIds) {
           const unseenCount = messages.filter(
-            (msg) => !msg.seenBy.includes(userId)
+            (msg) => !msg.seenBy.map((id: any) => id.toString()).includes(userId.toString())
           ).length;
           io.to(chatId).emit("unseenCount", { chatId, count: unseenCount });
         }

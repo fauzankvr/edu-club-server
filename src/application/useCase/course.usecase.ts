@@ -6,7 +6,7 @@ import ICourseRepo from "../interface/ICourseRepo";
 import ICurriculumRepo from "../interface/ICurriculamRepo";
 import { IOrderRepo } from "../interface/IOrderRepo";
 import IStudentRepo from "../interface/IStudentRepo";
-import { CreateCourseDTO } from "./InstructorUseCase";
+import { CreateCourseDTO } from "../interface/Dto/courseDto"; 
 
 
 export class CourseUseCase {

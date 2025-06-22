@@ -78,7 +78,11 @@ export const approvePayoutService = async (
       });
 
       const response = await paypalClient.execute(request);
-      payoutBatchId = response?.result?.batch_header?.payout_batch_id;
+      const batchId = response?.result?.batch_header?.payout_batch_id;
+      if (!batchId) {
+        throw new Error("Failed to retrieve payout batch ID from PayPal response.");
+      }
+      payoutBatchId = batchId;
     }
 
     await PayoutRequestModel.findByIdAndUpdate(payoutRequestId, {
