@@ -130,6 +130,18 @@ router.post("/student/resendOtp", (req, res) => {
   authController.resendOtp(req, res);
 })
 
+router.post("/student/sendOtp", (req, res) => {
+  authController.sendOtp(req, res);
+});
+router.post("/student/resetPassword", (req, res) => {
+  authController.resetPassword(req, res);
+});
+
+
+router.post("/student/forgotVerifyOtp", (req, res) => {
+  authController.forgotVerifyOtp(req, res);
+});
+
 router.put(
   "/student/profile",
   verifyStudent,

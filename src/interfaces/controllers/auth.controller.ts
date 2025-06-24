@@ -9,14 +9,15 @@ import { AuthUseCase } from "../../application/useCase/auth.usecase";
 
 
 class AuthController {
-  constructor(private studentUseCase: StudentUseCase,private authUseCase:AuthUseCase) {}
+  constructor(
+    private studentUseCase: StudentUseCase,
+    private authUseCase: AuthUseCase
+  ) {}
 
   async generateRefreshToken(req: Request, res: Response): Promise<void> {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
-      res
-        .status(StatusCodes.UNAUTHORIZED)
-        .json(errorResponse(UNAUTHORIZED));
+      res.status(StatusCodes.UNAUTHORIZED).json(errorResponse(UNAUTHORIZED));
       return;
     }
 
@@ -56,17 +57,15 @@ class AuthController {
         secure: true,
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
-      res
-        .status(StatusCodes.OK)
-        .json(
-          successResponse(SUCCESS_LOGIN, {
-            accessToken: result.accessToken,
-          })
-        );
+      res.status(StatusCodes.OK).json(
+        successResponse(SUCCESS_LOGIN, {
+          accessToken: result.accessToken,
+        })
+      );
     } catch (error: any) {
       res
         .status(StatusCodes.UNAUTHORIZED)
-        .json(errorResponse(error.message ||FAILED_LOGIN));
+        .json(errorResponse(error.message || FAILED_LOGIN));
     }
   }
 
@@ -100,11 +99,10 @@ class AuthController {
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_SIGNUP, { result }));
     } catch (err: any) {
-      console.log(err)
+      console.log(err);
       res
         .status(StatusCodes.BAD_REQUEST)
-          .json(errorResponse(err.message ||
-              FAILED_SIGNUP));
+        .json(errorResponse(err.message || FAILED_SIGNUP));
     }
   }
 
@@ -112,6 +110,33 @@ class AuthController {
     try {
       const { email } = req.body;
       const result = await this.authUseCase.signupAndSendOtp(email);
+      res
+        .status(StatusCodes.OK)
+        .json(successResponse(SUCCESS_SIGNUP, { result }));
+    } catch (err: any) {
+      res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(errorResponse(err.message || FAILED_SIGNUP));
+    }
+  }
+  async sendOtp(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+      const result = await this.authUseCase.SendOtp(email);
+      res
+        .status(StatusCodes.OK)
+        .json(successResponse(SUCCESS_SIGNUP, { result }));
+    } catch (err: any) {
+      res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(errorResponse(err.message || FAILED_SIGNUP));
+    }
+  }
+
+  async resetPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { email , newPassword } = req.body;
+      const result = await this.authUseCase.resetPassword(email, newPassword);
       res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_SIGNUP, { result }));
@@ -130,12 +155,21 @@ class AuthController {
         otp,
         password
       );
-     
+
+      res.status(StatusCodes.OK).json(successResponse(SUCCESS_SIGNUP));
+    } catch (err: any) {
       res
-        .status(StatusCodes.OK)
-        .json(
-          successResponse(SUCCESS_SIGNUP)
-        );
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(errorResponse(err.message || FAILED_SIGNUP));
+    }
+  }
+
+  async forgotVerifyOtp(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, otp } = req.body;
+      const result = await this.authUseCase.verifyOtp(email, otp);
+
+      res.status(StatusCodes.OK).json(successResponse(SUCCESS_SIGNUP));
     } catch (err: any) {
       res
         .status(StatusCodes.UNAUTHORIZED)
@@ -150,13 +184,9 @@ class AuthController {
         secure: true,
         sameSite: "strict",
       });
-      res
-        .status(StatusCodes.OK)
-        .json(successResponse(SUCCESS_LOGOUT, {}));
+      res.status(StatusCodes.OK).json(successResponse(SUCCESS_LOGOUT, {}));
     } catch (error) {
-      res
-        .status(StatusCodes.BAD_REQUEST)
-        .json(errorResponse(FAILED_LOGOUT));
+      res.status(StatusCodes.BAD_REQUEST).json(errorResponse(FAILED_LOGOUT));
     }
   }
 }
