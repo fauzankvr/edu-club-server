@@ -22,7 +22,7 @@ const app: Application = express();
 //  Proper CORS Configuration
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://educlub0.netlify.app"],
+    origin: ["http://localhost:5173", "https://educlub0.netlify.app","https://educlub.food"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -52,7 +52,11 @@ app.use(cookieParser());
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "https://educlub0.netlify.app"],
+    origin: [
+      "http://localhost:5173",
+      "https://educlub0.netlify.app",
+      "https://educlub.food",
+    ],
     credentials: true,
     methods: ["GET", "POST"],
   },
