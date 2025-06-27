@@ -35,4 +35,5 @@ export default interface ICourseRepo {
     priceMax?: string
   ): Promise<FilteredCoursesResult>;
   getAllCourses(email: string): Promise<ICourse[]>;
+  getAdminAllCourses(): Promise<ICourse[]>;
 }

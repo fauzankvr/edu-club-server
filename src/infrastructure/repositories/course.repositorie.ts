@@ -232,6 +232,9 @@ export class CourseRepository implements ICourseRepo {
   async getAllCourses(email: string): Promise<ICourse[]> {
     return await this.CourseModal.find({ instructor: email });
   }
+  async getAdminAllCourses(): Promise<ICourse[]> {
+    return await this.CourseModal.find();
+  }
   async findCourseByTitle(
     title: string,
     instructor: string

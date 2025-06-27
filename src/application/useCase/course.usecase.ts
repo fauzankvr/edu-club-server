@@ -82,6 +82,15 @@ export class CourseUseCase {
 
     return courses;
   }
+  async getAdminAllCourses() {
+    const courses = await this.courseRepo.getAdminAllCourses();
+
+    if (!courses) {
+      throw new Error("Failed to retrieve courses");
+    }
+
+    return courses;
+  }
   async getCourseById(id: string) {
     const res = await this.courseRepo.getCourseById(id);
     if (!res) {

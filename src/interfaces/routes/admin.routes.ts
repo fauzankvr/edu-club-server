@@ -93,7 +93,7 @@ router.get("/plan/:id", (req, res) => {
 })
 
 router.get("/courses", verifyAdmin, (req, res) => {
-  courseController.getAllCourses(req, res);
+  courseController.getAllCoursesAdmin(req, res);
 });
 router.patch("/course/:courseId/block",verifyAdmin, (req, res) => {
   courseController.blockCourse(req, res);

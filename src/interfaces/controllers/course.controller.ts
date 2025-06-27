@@ -134,6 +134,19 @@ export class CourseController {
         .json(errorResponse(FAILED_COURSE_FETCH));
     }
   }
+ 
+  async getAllCoursesAdmin(req:Request, res:Response):Promise<void>{
+    try {
+      const courses = await this.courseUseCase.getAdminAllCourses();
+      res
+        .status(StatusCodes.OK)
+        .json(successResponse(SUCCESS_COURSES_FETCH, { courses }));
+    } catch (error) {
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json(errorResponse(FAILED_COURSES_FETCH));
+    }
+ }
 
   async getInstructorAllCourses(
     req: IAuthenticatedRequest,
