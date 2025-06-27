@@ -12,12 +12,37 @@ export class CourseRepository implements ICourseRepo {
     return await this.CourseModal.create(courseData);
   }
 
-    async getCourseById(id: string): Promise<any> {
+  async getCourseById(id: string): Promise<any> {
     const course = await this.CourseModal.aggregate([
       {
         $match: {
           _id: new mongoose.Types.ObjectId(id),
           isBlocked: false,
+        },
+      },
+      {
+        $lookup: {
+          from: "instructors",
+          localField: "instructor",
+          foreignField: "email",
+          as: "instructorDetails",
+        },
+      },
+      {
+        $unwind: {
+          path: "$instructorDetails",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ]);
+    return course[0] || null;
+  }
+
+  async getBlockedCourseById(id: string): Promise<any> {
+    const course = await this.CourseModal.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(id),
         },
       },
       {
@@ -203,11 +228,17 @@ export class CourseRepository implements ICourseRepo {
       { $set: updateData },
       { new: true }
     );
-    }
-    async getAllCourses(email: string): Promise<ICourse[]> {
-        return await this.CourseModal.find({instructor:email})
   }
-  async findCourseByTitle(title: string, instructor: string): Promise<ICourse | null> {
-    return await this.CourseModal.findOne({instructor:instructor, title:title});
+  async getAllCourses(email: string): Promise<ICourse[]> {
+    return await this.CourseModal.find({ instructor: email });
+  }
+  async findCourseByTitle(
+    title: string,
+    instructor: string
+  ): Promise<ICourse | null> {
+    return await this.CourseModal.findOne({
+      instructor: instructor,
+      title: title,
+    });
   }
 }

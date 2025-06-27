@@ -17,6 +17,7 @@ export default interface ICourseRepo {
     excludeId?: string
   ): Promise<ICourse | null>;
   getCourseById(id: string): Promise<ICourse | null>;
+  getBlockedCourseById(id: string): Promise<ICourse | null>;
   getAllInstructorCourses(email: string): Promise<ICourse[]>;
   updateCourseById(
     id: string,

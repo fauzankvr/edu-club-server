@@ -168,7 +168,7 @@ export class CourseUseCase {
 
   async toggleCourseBlock(id: string) {
     try {
-      const course = await this.courseRepo.getCourseById(id);
+      const course = await this.courseRepo.getBlockedCourseById(id);
       if (!course) {
         throw new Error("Course not found");
       }
