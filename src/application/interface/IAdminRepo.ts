@@ -21,7 +21,20 @@ interface IAdminRepo {
     type: "weekly" | "monthly" | "yearly" | "custom";
     startDate?: Date;
     endDate?: Date;
-  }): Promise<{totalRevenue:string,orders:any[]}>;
+  }): Promise<{ totalRevenue: string; orders: any[] }>;
+  getOrderDetails(filter?: {
+    type: "weekly" | "monthly" | "yearly" | "custom";
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<
+    {
+      courseName: string;
+      studentName: string;
+      courseImage: string;
+      price: number;
+      date: string | Date;
+    }[]
+  >;
 }
 
 export default IAdminRepo

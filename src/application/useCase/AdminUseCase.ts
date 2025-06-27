@@ -122,13 +122,16 @@ export class AdminUseCase {
       totalTeachers,
       totalCourses,
       revenueByPeriod,
+      orderDetails,
     ] = await Promise.all([
       this.adminRepository.getTotalRevenue(filter),
       this.adminRepository.getTotalStudents(),
       this.adminRepository.getTotalTeachers(),
       this.adminRepository.getTotalCourses(),
       this.adminRepository.getRevenueByPeriod(filter),
+      this.adminRepository.getOrderDetails(filter),
     ]);
+    console.log(revenueByPeriod);
 
     return {
       totalRevenue,
@@ -136,6 +139,7 @@ export class AdminUseCase {
       totalTeachers,
       totalCourses,
       revenueByPeriod,
+      orderDetails,
     };
   }
 

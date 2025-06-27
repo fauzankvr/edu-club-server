@@ -8,9 +8,10 @@ import { ICourse } from "../database/models/CourseModel";
 import { IInstructor } from "../database/models/InstructorModel";
 
 export class AdminRepository implements IAdminRepo {
-  constructor(private AdminModal: Model<IAdmin>,
+  constructor(
+    private AdminModal: Model<IAdmin>,
     private orderModel: Model<IOrder>,
-  private userModel: Model<IStudent>,
+    private userModel: Model<IStudent>,
     private courseModel: Model<ICourse>,
     private instructorModel: Model<IInstructor>
   ) {}
@@ -21,7 +22,6 @@ export class AdminRepository implements IAdminRepo {
   }
   async getPayouts(): Promise<any[]> {
     const pendingPayouts = await PayoutRequestModel.aggregate([
-    
       {
         $lookup: {
           from: "instructors",
@@ -82,83 +82,106 @@ export class AdminRepository implements IAdminRepo {
     endDate?: Date;
   }): Promise<{ name: string; revenue: number }[]> {
     const matchStage: any = { status: "PAID" };
+
+    const now = new Date();
     if (filter) {
       if (filter.type === "custom" && filter.startDate && filter.endDate) {
         matchStage.createdAt = { $gte: filter.startDate, $lte: filter.endDate };
       } else if (filter.type === "weekly") {
         const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        oneWeekAgo.setDate(now.getDate() - 7);
         matchStage.createdAt = { $gte: oneWeekAgo };
       } else if (filter.type === "yearly") {
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        matchStage.createdAt = { $gte: oneYearAgo };
+        const fiveYearsAgo = new Date();
+        fiveYearsAgo.setFullYear(now.getFullYear() - 4); // last 5 years including current
+        fiveYearsAgo.setMonth(0, 1); // Jan 1st
+        fiveYearsAgo.setHours(0, 0, 0, 0);
+        matchStage.createdAt = { $gte: fiveYearsAgo };
       }
     }
 
+    // Group key based on filter
     const groupBy =
       filter?.type === "weekly"
         ? { $dayOfWeek: "$createdAt" }
+        : filter?.type === "yearly"
+        ? { $year: "$createdAt" }
         : { $month: "$createdAt" };
+
     const result = await this.orderModel.aggregate([
       { $match: matchStage },
-      { $group: { _id: groupBy, total: { $sum: "$priceUSD" } } },
+      {
+        $group: {
+          _id: groupBy,
+          total: { $sum: "$priceUSD" },
+        },
+      },
       {
         $project: {
-          name: {
-            $cond: {
-              if: { $eq: [filter?.type, "weekly"] },
-              then: {
-                $arrayElemAt: [
-                  ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-                  { $subtract: ["$_id", 1] },
-                ],
-              },
-              else: {
-                $arrayElemAt: [
-                  [
-                    "Jan",
-                    "Feb",
-                    "Mar",
-                    "Apr",
-                    "May",
-                    "Jun",
-                    "Jul",
-                    "Aug",
-                    "Sep",
-                    "Oct",
-                    "Nov",
-                    "Dec",
+          name:
+            filter?.type === "weekly"
+              ? {
+                  $arrayElemAt: [
+                    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+                    { $subtract: ["$_id", 1] },
                   ],
-                  { $subtract: ["$_id", 1] },
-                ],
-              },
-            },
-          },
+                }
+              : filter?.type === "yearly"
+              ? { $toString: "$_id" }
+              : {
+                  $arrayElemAt: [
+                    [
+                      "Jan",
+                      "Feb",
+                      "Mar",
+                      "Apr",
+                      "May",
+                      "Jun",
+                      "Jul",
+                      "Aug",
+                      "Sep",
+                      "Oct",
+                      "Nov",
+                      "Dec",
+                    ],
+                    { $subtract: ["$_id", 1] },
+                  ],
+                },
           revenue: "$total",
         },
       },
-      { $sort: { _id: 1 } },
+      { $sort: { name: 1 } },
     ]);
 
-    const allPeriods =
-      filter?.type === "weekly"
-        ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-        : [
-            "Jan",
-            "Feb",
-            "Mar",
-            "Apr",
-            "May",
-            "Jun",
-            "Jul",
-            "Aug",
-            "Sep",
-            "Oct",
-            "Nov",
-            "Dec",
-          ];
+    // Fill in missing periods for frontend display
+    let allPeriods: string[];
+
+    if (filter?.type === "weekly") {
+      allPeriods = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    } else if (filter?.type === "yearly") {
+      const currentYear = now.getFullYear();
+      allPeriods = Array.from({ length: 5 }, (_, i) =>
+        (currentYear - 4 + i).toString()
+      );
+    } else {
+      allPeriods = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+    }
+
     const revenueMap = new Map(result.map((item) => [item.name, item.revenue]));
+
     return allPeriods.map((period) => ({
       name: period,
       revenue: revenueMap.get(period) || 0,
@@ -262,7 +285,6 @@ export class AdminRepository implements IAdminRepo {
       },
       { $sort: { createdAt: -1 } },
     ]);
-    
 
     const totalRevenue = orders.reduce(
       (sum, order) => sum + (order.priceUSD || 0),
@@ -270,6 +292,108 @@ export class AdminRepository implements IAdminRepo {
     );
 
     return { totalRevenue, orders };
+  }
+
+  async getOrderDetails(filter?: {
+    type: "weekly" | "monthly" | "yearly" | "custom";
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<
+    {
+      courseName: string;
+      studentName: string;
+      price: number;
+      date: string;
+      courseImage: string;
+    }[]
+  > {
+    const match: any = {
+      status: "PAID",
+    };
+
+    if (filter?.type === "custom" && filter.startDate && filter.endDate) {
+      match.createdAt = {
+        $gte: new Date(filter.startDate),
+        $lte: new Date(filter.endDate),
+      };
+    } else if (filter?.type) {
+      const now = new Date();
+      let from: Date;
+
+      switch (filter.type) {
+        case "weekly":
+          from = new Date();
+          from.setDate(now.getDate() - 7);
+          break;
+        case "monthly":
+          from = new Date();
+          from.setMonth(now.getMonth() - 1);
+          break;
+        case "yearly":
+          from = new Date();
+          from.setFullYear(now.getFullYear() - 1);
+          break;
+        default:
+          from = new Date(0);
+      }
+
+      match.createdAt = {
+        $gte: from,
+        $lte: now,
+      };
+    }
+
+    const result = await this.orderModel.aggregate([
+      { $match: match },
+      {
+        $lookup: {
+          from: "courses",
+          let: { courseIdString: "$courseId" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$$courseIdString", { $toString: "$_id" }] },
+              },
+            },
+            { $project: { title: 1, courseImageId: 1 } },
+          ],
+          as: "courseDetails",
+        },
+      },
+      { $unwind: { path: "$courseDetails", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "students",
+          let: { userIdString: "$userId" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$$userIdString", { $toString: "$_id" }] },
+              },
+            },
+            { $project: { firstName: 1, lastName: 1 } },
+          ],
+          as: "userDetails",
+        },
+      },
+      { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          courseName: "$courseDetails.title",
+          courseImage: "$courseDetails.courseImageId",
+          studentName: {
+            $concat: ["$userDetails.firstName", " ", "$userDetails.lastName"],
+          },
+          price: "$priceUSD",
+          date: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+          },
+        },
+      },
+      { $sort: { date: -1 } },
+    ]);
+
+    return result;
   }
 }
 

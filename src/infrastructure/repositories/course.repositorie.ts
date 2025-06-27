@@ -13,11 +13,11 @@ export class CourseRepository implements ICourseRepo {
   }
 
     async getCourseById(id: string): Promise<any> {
-      console.log(id)
     const course = await this.CourseModal.aggregate([
       {
         $match: {
           _id: new mongoose.Types.ObjectId(id),
+          isBlocked: false,
         },
       },
       {
@@ -116,6 +116,11 @@ export class CourseRepository implements ICourseRepo {
         },
       });
     }
+    pipeline.push({
+      $match: {
+        isBlocked: false,
+      },
+    });
 
     const totalPipeline = [...pipeline, { $count: "total" }];
     const totalResult = await this.CourseModal.aggregate(totalPipeline);
