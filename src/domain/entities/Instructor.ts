@@ -8,6 +8,7 @@ export class Instructor {
     public nationality?: string,
     public dateOfBirth?: Date,
     public eduQulification?: string,
-    public profileImage?:string
+    public profileImage?: string,
+    public paypalEmail?: string
   ) {}
 }

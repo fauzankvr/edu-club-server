@@ -65,11 +65,17 @@ router.post("/signup", (req, res) => {
   instructorController.signupInstructor(req, res);
 })
 
+router.post("/sendOtp",(req,res)=>{
+  instructorController.sendOtp(req,res)
+})
 router.post("/verifyOtp", (req, res) => {
   instructorController.verifyOtp(req, res);
 })
 router.post("/resendOtp", (req, res) => {
   instructorController.resendOtp(req, res);
+})
+router.post("/resetPassword", (req, res) => {
+  instructorController.resetPassword(req, res);
 })
 
 router.post("/login", (req, res) => {

@@ -3,6 +3,7 @@ import { IOrder } from "../../infrastructure/database/models/OrderModel";
 
 export interface IOrderRepo {
   getOrderById(paypalOrderId: string): Promise<IOrder | null>;
+  getOrdersByUserId(userId:string):Promise<IOrder[]>
   findPaidCourses(id: string): Promise<
     Array<{
       orderDetails: IOrder & { courseDetails?: never };
@@ -14,7 +15,7 @@ export interface IOrderRepo {
   getTotalEnrollments(instructorId: string): Promise<number>;
   getMonthlyRevenue(
     instructorId: string,
-    filter:any
+    filter: any
   ): Promise<{ name: string; uv: number }[]>;
   getPayoutSummary(
     instructorId: string

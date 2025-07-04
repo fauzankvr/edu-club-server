@@ -6,7 +6,10 @@ import Instructor from "../database/models/InstructorModel";
 import { IMessage } from "../database/models/MessageModel";
 
 export class ChatRepository implements IChatRepo {
-  constructor(private ChatModel: Model<IChat>, private MessageModel: Model<IMessage>) {}
+  constructor(
+    private ChatModel: Model<IChat>,
+    private MessageModel: Model<IMessage>
+  ) {}
 
   async getAllChats(id: string): Promise<any[]> {
     const chats = await this.ChatModel.aggregate([
@@ -37,9 +40,13 @@ export class ChatRepository implements IChatRepo {
           preserveNullAndEmptyArrays: true,
         },
       },
+      {
+        // 🔽 Sort by lastMessageTime in descending order
+        $sort: { lastMessageTime: -1 },
+      },
     ]);
 
-    // For each chat, compute unread message count
+    // Compute unread count for each chat
     const chatsWithUnread = await Promise.all(
       chats.map(async (chat) => {
         const unreadCount = await this.MessageModel.countDocuments({

@@ -46,6 +46,8 @@ import { NotesUseCase } from "../../application/useCase/notes.usecase";
 import { NotesController } from "../controllers/notes.controller";
 import { planController } from "./admin.routes";
 import PayoutRequestModel from "../../infrastructure/database/models/Payout";
+import { ProgressRepository } from "../../infrastructure/repositories/progress.repository";
+import ProgressModel from "../../infrastructure/database/models/ProgressModel";
 
 // Create dependencies
 const studentRepo = new StudentRepository(StudentModel);
@@ -66,13 +68,20 @@ const chatUseCase = new ChatUseCase(
 const instructorUseCase = new InstructorUseCase(instrucotRepo,otpRepo)
 const chatController = new ChatController(chatUseCase, studentUseCase, instructorUseCase);
 
-const authUseCase = new AuthUseCase(studentRepo,otpRepo)
+const authUseCase = new AuthUseCase(studentRepo, otpRepo, instrucotRepo);
 const authController = new AuthController(studentUseCase, authUseCase);
 
 const courseRepo = new CourseRepository(CourseModel)
 const curriculamRepo = new CurriculumRepository(CurriculumModel)
+const progressRepo = new ProgressRepository(ProgressModel, CurriculumModel);
 const orderRepo = new OrderRepository(OrderModel,PayoutRequestModel)
-const courseUseCase = new CourseUseCase(courseRepo, curriculamRepo, orderRepo,studentRepo);
+const courseUseCase = new CourseUseCase(
+  courseRepo,
+  curriculamRepo,
+  orderRepo,
+  studentRepo,
+  progressRepo
+);
 const courseController = new CourseController(courseUseCase)
 
 const transactionRepo = new TransactionRepository(TransactionModel)
@@ -174,14 +183,30 @@ router.get("/student/courses/enrolled", verifyStudent, async (req, res) => {
 router.get("/student/getCurriculum/:courseId", async (req, res) => {
   await courseController.getCurriculum(req, res);
 });
+
+router.get("/student/getProgress/:studentId/:courseId", async (req, res) => {
+  await courseController.getLessonProgress(req,res)
+});
+
+router.patch("/student/updateProgress", async (req, res) => {
+  await courseController.updateLessonProgress(req,res)
+})
+
 router.get("/student/course/fullcourse/:orderId", async (req, res) => {
   await courseController.getFullCourse(req, res);
 });
 
 // order
-router.post("/student/orders",verifyStudent, async (req, res) => {
-  await orderController.createOrder(req, res);
-});
+
+router
+  .route("/student/orders")
+  .get(verifyStudent, async (req, res) => {
+    await orderController.getOrders(req, res);
+  })
+  .post(verifyStudent, async (req, res) => {
+    await orderController.createOrder(req, res);
+  });
+  
 router.post("/student/orders/capture/:orderId",async (req, res) => {
   await orderController.captureOrder(req, res);
 });

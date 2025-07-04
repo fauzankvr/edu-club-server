@@ -70,7 +70,8 @@ class AuthController {
   }
 
   async googleLoginController(req: Request, res: Response): Promise<void> {
-    const { token } = req.body;
+    const { token, role } = req.body;
+    console.log(token)
     if (!token) {
       res
         .status(StatusCodes.BAD_REQUEST)
@@ -80,11 +81,12 @@ class AuthController {
     const authService = new GoogleAuthServiceImpl();
     try {
       const { message, accessToken, refreshToken } =
-        await this.authUseCase.googleLoginUseCase(token, authService);
+        await this.authUseCase.googleLoginUseCase(token, authService,role);
       res
         .status(StatusCodes.OK)
         .json(successResponse(message, { accessToken, refreshToken }));
     } catch (err) {
+      console.log(err)
       res
         .status(StatusCodes.UNAUTHORIZED)
         .json(errorResponse(FAILED_GOOGLE_LOGIN));
@@ -149,8 +151,10 @@ class AuthController {
 
   async verifyOtp(req: Request, res: Response): Promise<void> {
     try {
-      const { email, otp, password } = req.body;
+      const { firstName,lastName, email, otp, password } = req.body;
       const result = await this.authUseCase.verifyOtpAndSignup(
+        firstName,
+        lastName,
         email,
         otp,
         password

@@ -2,12 +2,14 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface ILecture {
+  _id: string;
   title: string;
   videoPath?: string; 
   pdfPath?: string; 
 }
 
 export interface ISection {
+  _id: string;
   title: string;
   lectures: ILecture[];
 }

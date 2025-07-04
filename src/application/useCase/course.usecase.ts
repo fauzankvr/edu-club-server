@@ -7,6 +7,8 @@ import ICurriculumRepo from "../interface/ICurriculamRepo";
 import { IOrderRepo } from "../interface/IOrderRepo";
 import IStudentRepo from "../interface/IStudentRepo";
 import { CreateCourseDTO } from "../interface/Dto/courseDto"; 
+import { IProgressRepo } from "../interface/IProgressRepo";
+import { IProgress } from "../../infrastructure/database/models/ProgressModel";
 
 
 export class CourseUseCase {
@@ -14,7 +16,8 @@ export class CourseUseCase {
     private courseRepo: ICourseRepo,
     private curriculamRepo: ICurriculumRepo,
     private orderRepo: IOrderRepo,
-    private studentRepo: IStudentRepo
+    private studentRepo: IStudentRepo,
+    private progressRepo: IProgressRepo
   ) {}
 
   async getFilterdCourses(
@@ -225,6 +228,57 @@ export class CourseUseCase {
       throw new Error(CURRICULUM_NOT_FOUND);
     }
     return curriculum;
+  }
+
+  async getLessonProgress(
+    courseId: string,
+    studentId: string
+  ): Promise<IProgress | null> {
+    try {
+      console.log(courseId,studentId)
+      const progress = await this.progressRepo.findByStudentAndCourse(
+        studentId,
+        courseId
+      );
+      if (!progress) {
+        return null; // No progress found for this student and course
+      }
+      return progress;
+    } catch (error) {
+      throw new Error(
+        `Failed to fetch progress: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async updateLessonProgress(
+    courseId: string,
+    studentId: string,
+    sectionId: string,
+    lectureId: string,
+    progress: number
+  ): Promise<IProgress> {
+    try {
+
+      // Update progress using the repository
+      const progressDoc = await this.progressRepo.createOrUpdateProgress(
+        studentId,
+        courseId,
+        sectionId,
+        lectureId,
+        progress.toString()
+      );
+
+      return progressDoc;
+    } catch (error) {
+      throw new Error(
+        `Failed to update progress: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
   }
 
   async getEnrolledCourses(email: string) {

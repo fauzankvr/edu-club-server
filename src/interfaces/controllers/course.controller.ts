@@ -134,8 +134,8 @@ export class CourseController {
         .json(errorResponse(FAILED_COURSE_FETCH));
     }
   }
- 
-  async getAllCoursesAdmin(req:Request, res:Response):Promise<void>{
+
+  async getAllCoursesAdmin(req: Request, res: Response): Promise<void> {
     try {
       const courses = await this.courseUseCase.getAdminAllCourses();
       res
@@ -146,7 +146,7 @@ export class CourseController {
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
         .json(errorResponse(FAILED_COURSES_FETCH));
     }
- }
+  }
 
   async getInstructorAllCourses(
     req: IAuthenticatedRequest,
@@ -257,6 +257,62 @@ export class CourseController {
       res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
         .json(errorResponse(FAILED_CURRICULUM_FETCH));
+    }
+  }
+
+  async getLessonProgress(req: Request, res: Response): Promise<void> {
+    try {
+      const { courseId, studentId } = req.params;
+
+      if (!courseId || !studentId) {
+        res
+          .status(StatusCodes.BAD_REQUEST)
+          .json(errorResponse("Missing parameters"));
+        return;
+      }
+
+      const progress = await this.courseUseCase.getLessonProgress(
+        courseId,
+        studentId
+      );
+      res
+        .status(StatusCodes.OK)
+        .json(successResponse("Progress fetched", { progress }));
+    } catch (error) {
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json(errorResponse("Failed to fetch progress"));
+    }
+  }
+
+
+  async updateLessonProgress(req: Request, res: Response): Promise<void> {
+    try {
+      const { courseId, studentId, sectionId, lectureId, progress } =
+      req.body;
+
+      if (!courseId || !studentId || !progress) {
+        res
+          .status(StatusCodes.BAD_REQUEST)
+          .json(errorResponse("Missing parameters"));
+        return;
+      }
+
+      const updated = await this.courseUseCase.updateLessonProgress(
+        courseId,
+        studentId,
+        sectionId,
+        lectureId,
+        progress
+      );
+
+      res
+        .status(StatusCodes.OK)
+        .json(successResponse("Progress updated", { updated }));
+    } catch (error) {
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json(errorResponse("Failed to update progress"));
     }
   }
 

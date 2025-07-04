@@ -19,7 +19,7 @@ import { setupVideoSocket } from "./infrastructure/services/videoSocket";
 dotenv.config();
 const app: Application = express();
 
-app.set("trust proxy", true);
+app.set("trust proxy", false);
 
 //  Proper CORS Configuration
 app.use(

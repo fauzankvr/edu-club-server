@@ -80,10 +80,11 @@ export const FAILED_FEATCH_CHATS = "Failed to fetch chats"
 export const FAILED_MESSAGE_CREATE = "Failed to create message"
 export const FAILED_FEATCH_MESSAGE = "Failed to fetch message";
 
-
+export const USER_NOT_FOUND = "User not found";
 export const USER_ALREADY_EXISTS = "User already exists";
 export const OTP_WAIT = "Please wait before resending OTP";
 export const OTP_SENT = "OTP sent successfully";
+export const FAILED_OTP_SENT = "OTP sent failed";
 export const INVALID_OTP = "Invalid OTP";
 export const VALID_OTP = "Valid OTP";
 export const SUCCESS_RESET_PASSWORD = "Password reset successfully";
@@ -204,3 +205,6 @@ export const SUCCESS_CHECKOUT_UPDATED = "Checkout updated successfully";
 export const FAILED_CHECKOUT_UPDATED = "Failed to update checkout";
 export const SUCCESS_CHECKOUTS_FETCHED = "Checkouts fetched successfully";
 export const FAILED_CHECKOUTS_FETCHED = "Failed to fetch checkouts";
+
+export const FAILED_ORDER_FETCH = "Failed to fetch orders";
+export const SUCCESS_ORDERS_FETCHED = "Orders fetched successfully";

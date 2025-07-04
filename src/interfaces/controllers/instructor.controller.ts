@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { IAuthenticatedRequest } from "../middlewares/ExtractInstructor";
 import { InstructorUseCase } from "../../application/useCase/instructor.usecase"; 
 import { generateAccessToken, TokenPayload, verifyRefreshToken } from "../../infrastructure/utility/GenarateToken";
+import { errorResponse, successResponse } from "../../infrastructure/utility/ResponseCreator";
+import { StatusCodes } from "../constants/statusCodes";
+import { FAILED_OTP_SENT, FAILED_RESET_PASSWORD, OTP_SENT, SUCCESS_RESET_PASSWORD } from "../constants/responseMessage";
 
 
 export class InstructorController  {
@@ -66,7 +69,6 @@ export class InstructorController  {
     
       loginInstructor = async (req: Request, res: Response) => {
         const { email, password } = req.body;
-        console.log(req.body);
         try {
           if (!email || !password) {
             return res.status(400).json({
@@ -79,7 +81,6 @@ export class InstructorController  {
             email,
             password
           );
-          console.log("res", result);
           res.cookie("refreshToken", result.refreshToken, {
             sameSite: "strict",
             httpOnly: true,
@@ -102,7 +103,6 @@ export class InstructorController  {
       signupInstructor = async (req: Request, res: Response) => {
         try {
           const { email } = req.body;
-          console.log(req.body, "instructor signup");
           const result = await this.InstructorUseCase.signupAndSendOtp(email);
           res.status(200).json({ success: true, result });
         } catch (err: any) {
@@ -124,11 +124,39 @@ export class InstructorController  {
           res.status(400).json({ message: "Logout failed", error });
         }
       };
+
+        async sendOtp(req: Request, res: Response): Promise<void> {
+          try {
+            const { email } = req.body;
+            const result = await this.InstructorUseCase.SendOtp(email);
+            res
+              .status(StatusCodes.OK)
+              .json(successResponse(OTP_SENT, { result }));
+          } catch (err: any) {
+            res
+              .status(StatusCodes.BAD_REQUEST)
+              .json(errorResponse(err.message || FAILED_OTP_SENT));
+          }
+  }
+    async resetPassword(req: Request, res: Response): Promise<void> {
+      try {
+        const { email , newPassword } = req.body;
+        const result = await this.InstructorUseCase.resetPassword(email, newPassword);
+        res
+          .status(StatusCodes.OK)
+          .json(successResponse(SUCCESS_RESET_PASSWORD, { result }));
+      } catch (err: any) {
+        res
+          .status(StatusCodes.BAD_REQUEST)
+          .json(errorResponse(err.message || FAILED_RESET_PASSWORD));
+      }
+    }
     
       verifyOtp = async (req: Request, res: Response) => {
         try {
-          const { email, otp, password } = req.body;
+          const { fullName, email, otp, password } = req.body;
           const result = await this.InstructorUseCase.verifyOtpAndSignup(
+            fullName,
             email,
             otp,
             password
@@ -139,19 +167,15 @@ export class InstructorController  {
             message: "Signup successful",
           });
         } catch (err: any) {
-          console.log("error in verify otp", err.message);
           res.status(401).json({ message: err.message, token: "" });
         }
       };
       resendOtp = async (req: Request, res: Response) => {
         try {
-          const { email } = req.body;
-          console.log("Resending OTP to:", email);
-    
+          const { email } = req.body;    
           if (!email) {
             return res.status(400).json({ error: "Email is required" });
           }
-    
           const result = await this.InstructorUseCase.signupAndSendOtp(email);
     
           res

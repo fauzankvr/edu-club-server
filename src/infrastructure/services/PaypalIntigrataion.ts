@@ -34,9 +34,28 @@ const client = new Client({
   },
 });
 
+const accessKey = process.env.EXCHANGE_KEY as string;
+const newdate = new Date()
+const date = newdate.toISOString().split("T")[0]
+
+const convertINRtoUSD = async (inr: number): Promise<number> => {
+  try {
+    const res = await fetch(
+      `https://api.exchangerate.host/convert?access_key=${accessKey}&from=INR&to=USD&amount=${inr}&date=${date}`
+    );
+    const data = await res.json();
+    return parseFloat(data.result.toFixed(2));
+  } catch (error) {
+    console.error("Currency conversion failed, fallback to static rate.");
+    const fallbackRate = 0.012; 
+    return parseFloat((inr * fallbackRate).toFixed(2));
+  }
+};
+
+
 const ordersController = new OrdersController(client);
 
-// Create a new PayPal Order and save in DB
+// // Create a new PayPal Order and save in DB
 export const createOrderService = async (cart: any, userEmail: string) => {
   // Validate cart input
   if (!cart || !Array.isArray(cart) || !cart.length) {
@@ -55,7 +74,10 @@ export const createOrderService = async (cart: any, userEmail: string) => {
 
   const userId = user._id.toString();
   const quantity = cart[0].quantity || 1;
-  const priceUSD = course.price.toFixed(2);
+  const priceINR = course.price;
+
+  // Convert INR to USD (to show in PayPal)
+  const priceUSD = (await convertINRtoUSD(priceINR)).toFixed(2);
 
   // Check if course is already purchased
   const paidOrder = await OrderModel.findOne({
@@ -82,7 +104,7 @@ export const createOrderService = async (cart: any, userEmail: string) => {
       });
       const orderDetails = typeof body === "string" ? JSON.parse(body) : body;
 
-      // Check if the order is still valid (CREATED or APPROVED)
+      // Check if order is still valid
       if (
         orderDetails.status === "CREATED" ||
         orderDetails.status === "APPROVED"
@@ -98,7 +120,6 @@ export const createOrderService = async (cart: any, userEmail: string) => {
         });
       }
     } catch (error) {
-      // Delete invalid order if PayPal API call fails
       await OrderModel.deleteOne({
         paypalOrderId: existingPendingOrder.paypalOrderId,
       });
@@ -106,41 +127,39 @@ export const createOrderService = async (cart: any, userEmail: string) => {
   }
 
   // Create new PayPal order
-  const orderBody = {
-    body: {
-      intent: CheckoutPaymentIntent.Capture,
-      purchaseUnits: [
-        {
-          amount: {
-            currencyCode: "USD",
-            value: priceUSD,
-            breakdown: {
-              itemTotal: {
-                currencyCode: "USD",
-                value: priceUSD,
-              },
-            },
-          },
-          items: [
-            {
-              name: course.title,
-              unitAmount: {
-                currencyCode: "USD",
-                value: priceUSD,
-              },
-              quantity: quantity.toString(),
-              description: course.description || "No description",
-              sku: course.id.toString(),
-            },
-          ],
-        },
-      ],
-    },
-    prefer: "return=minimal",
-  };
-
   try {
-    const { body } = await ordersController.createOrder(orderBody);
+    const { body } = await ordersController.createOrder({
+      body: {
+        intent: CheckoutPaymentIntent.Capture,
+        purchaseUnits: [
+          {
+            amount: {
+              currencyCode: "USD",
+              value: priceUSD,
+              breakdown: {
+                itemTotal: {
+                  currencyCode: "USD",
+                  value: priceUSD,
+                },
+              },
+            },
+            items: [
+              {
+                name: course.title,
+                unitAmount: {
+                  currencyCode: "USD",
+                  value: priceUSD,
+                },
+                quantity: quantity.toString(),
+                description: course.description || "No description",
+                sku: course.id.toString(),
+              },
+            ],
+          },
+        ],
+      },
+      prefer: "return=minimal",
+    });
 
     if (typeof body === "string") {
       const jsonResponse = JSON.parse(body);
@@ -148,14 +167,14 @@ export const createOrderService = async (cart: any, userEmail: string) => {
 
       const orderId = jsonResponse.id;
 
-      // Save the order in the database
+      // Save the order in the database (price stored in INR)
       await OrderModel.create({
         userId,
         courseId: course.id,
         quantity,
         paypalOrderId: orderId,
         status: "PENDING",
-        priceUSD: parseFloat(priceUSD),
+        priceUSD: priceINR, // Save actual INR value in DB
       });
 
       return {

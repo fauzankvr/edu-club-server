@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { IAuthanticatedRequest } from "../middlewares/ExtractUser";
 import { StudentUseCase } from "../../application/useCase/student.usecase";
-import { FAILED_ORDER_CAPTURE, FAILED_ORDER_CREATE, INVALID_TOKEN, SUCCESS_ORDER_CAPTURED, SUCCESS_ORDER_CREATED } from "../constants/responseMessage";
+import { FAILED_ORDER_CAPTURE, FAILED_ORDER_CREATE, FAILED_ORDER_FETCH, INVALID_TOKEN, SUCCESS_ORDER_CAPTURED, SUCCESS_ORDER_CREATED, SUCCESS_ORDERS_FETCHED } from "../constants/responseMessage";
 import { StatusCodes } from "../constants/statusCodes";
 import { captureOrderService, createOrderService } from "../../infrastructure/services/PaypalIntigrataion";
 import { errorResponse, successResponse } from "../../infrastructure/utility/ResponseCreator";
@@ -35,12 +35,31 @@ export class OrderController {
     }
   }
 
+  async getOrders(req: IAuthanticatedRequest, res: Response): Promise<void> {
+    try {
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error(INVALID_TOKEN);
+      }
+      const orders = await this.orderUseCase.getOrders(student.id);
+      res
+        .status(StatusCodes.OK)
+        .json(successResponse(SUCCESS_ORDERS_FETCHED, { purchases: orders }));
+    } catch (error: any) {
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json(errorResponse(error.message || FAILED_ORDER_FETCH));
+    }
+  }
+
+
   async captureOrder(req: Request, res: Response): Promise<void> {
     try {
       const { orderId } = req.params;
       const { message, captureId, orderID1 } = await captureOrderService(
         orderId
       );
+      
       res.status(StatusCodes.OK).json(
         successResponse(SUCCESS_ORDER_CAPTURED, {
           message,
@@ -130,7 +149,6 @@ export class OrderController {
       if (!instructoremail) {
         return res.status(401).json({ error: "Unauthorized" });
       }
-      console.log(req.query)
       const { filterType, startDate, endDate } = req.query;
       let filter;
       if (filterType) {

@@ -134,6 +134,31 @@ export const setupChatSocket = (io: Server) => {
             text,
             seenBy: [sender],
           });
+          await ChatModel.findByIdAndUpdate(chatId, {
+            lastMessage: text,
+            lastMessageTime: new Date(),
+          });
+
+          const contactUpdate = {
+            chatId,
+            lastMessage: text,
+            lastMessageTime: new Date().toISOString(),
+          };
+          const chat = await ChatModel.findById(chatId)
+            .populate("userId")
+            .populate("instructorId");
+          if(!chat) return
+          const userIds = [
+            chat?.userId.toString(),
+            chat?.instructorId.toString(),
+          ];
+          userIds.forEach((uid) => {
+            const socketId = getSocketIdByUserId(uid);
+            if (socketId) {
+              io.to(socketId).emit("chatUpdated", contactUpdate);
+            }
+          });
+
           const messageToSend: Message = {
             id: savedMessage.id.toString(),
             chatId: savedMessage.chatId.toString(),

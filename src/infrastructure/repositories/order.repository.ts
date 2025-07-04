@@ -13,6 +13,31 @@ export class OrderRepository implements IOrderRepo {
     return await this.orderModel.findOne({ paypalOrderId });
   }
 
+  async getOrdersByUserId(userId: string): Promise<IOrder[]> {
+    return await this.orderModel.aggregate([
+      { $match: { userId: userId } },
+      {
+        $addFields: {
+          courseObjectId: { $toObjectId: "$courseId" }, // Convert to ObjectId
+        },
+      },
+      {
+        $lookup: {
+          from: "courses", // Make sure this matches the actual collection name
+          localField: "courseObjectId",
+          foreignField: "_id",
+          as: "courseDetails",
+        },
+      },
+      {
+        $unwind: {
+          path: "$courseDetails",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ]);
+  }
+
   async findPaidCourses(id: string): Promise<any> {
     const courses = await this.orderModel.aggregate([
       {
@@ -294,7 +319,7 @@ export class OrderRepository implements IOrderRepo {
           },
           price: "$priceUSD",
           date: "$createdAt",
-        },  
+        },
       },
       { $sort: { date: -1 } }, // Sort by date descending
     ]);

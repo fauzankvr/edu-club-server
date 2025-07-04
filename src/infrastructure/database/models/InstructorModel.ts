@@ -12,19 +12,21 @@ export interface IInstructor extends Document {
   phone?: number;
   profileImage?: string;
   paypalEmail?: string;
+  Biography?:string
 }
 
 const InstructorSchema: Schema = new Schema({
   fullName: { type: String, required: true },
-  password: { type: String, required: true },
-  IsBlocked: { type: Boolean, required: true ,default:false},
+  password: { type: String },
+  IsBlocked: { type: Boolean, required: true, default: false },
   phone: { type: Number },
-  profileImage:{type:String},
+  profileImage: { type: String },
   nationality: { type: String },
   dateOfBirth: { type: Date },
   eduQulification: { type: String },
   email: { type: String, required: true, unique: true },
   paypalEmail: { type: String, default: "" },
+  Biography:{type:String}
 });
 
 const InstructorModal = mongoose.model<IInstructor>("Instructor", InstructorSchema);

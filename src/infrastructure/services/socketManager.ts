@@ -1,6 +1,6 @@
 export const userSocketMap = new Map<string, string>(); // userId -> socketId
 export const socketUserMap = new Map<string, string>(); // socketId -> userId
-console.log("Socket manager initialized", userSocketMap, socketUserMap);
+
 
 export const registerUserSocket = (
   socketId: string,

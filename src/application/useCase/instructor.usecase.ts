@@ -3,6 +3,7 @@ import  { IInstructor } from "../../infrastructure/database/models/InstructorMod
 import { sendOtpEmail } from "../../infrastructure/services/EmailService";
 import { generateAccessToken, generateRefreshToken, TokenPayload, verifyRefreshToken } from "../../infrastructure/utility/GenarateToken";
 import { generateOtp } from "../../infrastructure/utility/GenerateOtp";
+import { FAILED_RESET_PASSWORD, OTP_SENT, OTP_WAIT, SUCCESS_RESET_PASSWORD, USER_NOT_FOUND } from "../../interfaces/constants/responseMessage";
 import IInstructorRepo from "../interface/IInstructorRepo";
 import { IOtpRepo } from "../interface/IotpRepo";
 import bcrypt from "bcrypt";
@@ -42,13 +43,54 @@ export class InstructorUseCase {
     return { message: "OTP sented successfully" };
   }
 
-  async verifyOtpAndSignup(email: string, otp: string, password: string) {
+  async SendOtp(email: string) {
+    const existing = await this.instructorRepo.findSafeInstructorByEmail(email);
+    if (!existing) throw new Error(USER_NOT_FOUND);
+    const lastOtp = await this.otpRepo.findOtp(email);
+    if (lastOtp && Date.now() - lastOtp.createdAt.getTime() < 3000) {
+      throw new Error(OTP_WAIT);
+    }
+
+    const otp = generateOtp();
+    console.log(otp);
+    await sendOtpEmail(email, otp);
+    await this.otpRepo.createOtp(email, otp);
+
+    return { message: OTP_SENT };
+  }
+
+  async resetPassword(email: string,password: string) {
+      const existing = await this.instructorRepo.findSafeInstructorByEmail(email);
+      if (!existing) throw new Error(USER_NOT_FOUND);
+  
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const createdStudent = await this.instructorRepo.updateById(existing._id.toString(), { password: hashedPassword });
+      if (!createdStudent) {
+        throw new Error(FAILED_RESET_PASSWORD);
+      }
+  
+      return { message: SUCCESS_RESET_PASSWORD };
+    }
+
+  async verifyOtpAndSignup(
+    fullName: string,
+    email: string,
+    otp: string,
+    password: string
+  ) {
     const validOtp = await this.otpRepo.findOtp(email);
-    if (!validOtp) throw new Error("Invalid OTP");
+    otp = otp.trim().toString();
+
+    if (!validOtp || validOtp.otp !== otp) throw new Error("Invalid OTP");
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newInstructor = new Instructor(email, hashedPassword, false);
+    const newInstructor = new Instructor(
+      email,
+      hashedPassword,
+      false,
+      fullName
+    );
     const createdInstructor = await this.instructorRepo.createInstructor(
       newInstructor
     );
