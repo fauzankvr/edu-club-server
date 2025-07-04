@@ -31,6 +31,8 @@ import { WishlistRepository } from '../../infrastructure/repositories/whishlist.
 import { WishlistModel } from '../../infrastructure/database/models/WishlistModel'
 import OrderModel from '../../infrastructure/database/models/OrderModel'
 import PayoutRequestModel from '../../infrastructure/database/models/Payout'
+import { ProgressRepository } from '../../infrastructure/repositories/progress.repository'
+import ProgressModel from '../../infrastructure/database/models/ProgressModel'
 
 
 const instructorRepo = new InstructorRepository(InstructorModel)
@@ -43,7 +45,8 @@ const courseRepo = new CourseRepository(CourseModel)
 const orderRepo = new OrderRepository(OrderModel,PayoutRequestModel)
 const studentRepo = new StudentRepository(StudentModel)
 const curriculamRepo = new CurriculumRepository(CurriculumModel)
-const courseUseCase = new CourseUseCase(courseRepo, curriculamRepo, orderRepo,studentRepo);
+const progressRepo = new ProgressRepository(ProgressModel,CurriculumModel)
+const courseUseCase = new CourseUseCase(courseRepo, curriculamRepo, orderRepo,studentRepo,progressRepo);
 export const courseController = new CourseController(courseUseCase)
 
 const chatRepo = new ChatRepository(ChatModel,MessageModel)
