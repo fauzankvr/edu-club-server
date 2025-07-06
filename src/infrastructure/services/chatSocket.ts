@@ -7,6 +7,7 @@ import {
   unregisterUserSocket,
   getSocketIdByUserId,
 } from "./socketManager";
+import { INotification } from "../database/models/NotificationModel";
 
 interface Message {
   id: string;
@@ -234,6 +235,19 @@ export const setupChatSocket = (io: Server) => {
           socket.to(chatId).emit("stopTyping", { chatId, sender });
       }
     );
+
+    socket.on("newNotification", async (notification: INotification) => {
+      try {
+        const clientsInRoom = io.sockets.adapter.rooms.get(`user:${notification.studentId}`);
+        const studetnSoket = getSocketIdByUserId(notification.studentId.toString());
+        console.log(`Clients in room user:${studetnSoket}`);
+        if (!studetnSoket) return;
+        io.to(studetnSoket).emit("newNotification", notification);
+      } catch (error) {
+        console.error("Error sending notification:", error);
+        socket.emit("error", { error: "Failed to send notification" });
+      }
+    });
 
     socket.on("disconnect", async () => {
       console.log(`${socket.id} disconnected`);

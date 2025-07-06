@@ -230,12 +230,32 @@ export class CourseUseCase {
     return curriculum;
   }
 
+  async getAllProgress(
+    studentId: string
+  ): Promise<IProgress[] | null> {
+    try {
+      const progress = await this.progressRepo.findByStudentId(
+        studentId
+      );
+      if (!progress) {
+        return null; 
+      }
+      return progress;
+    } catch (error) {
+      throw new Error(
+        `Failed to fetch progress: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
   async getLessonProgress(
     courseId: string,
     studentId: string
   ): Promise<IProgress | null> {
     try {
-      console.log(courseId,studentId)
+      console.log(courseId, studentId);
       const progress = await this.progressRepo.findByStudentAndCourse(
         studentId,
         courseId
@@ -261,7 +281,6 @@ export class CourseUseCase {
     progress: number
   ): Promise<IProgress> {
     try {
-
       // Update progress using the repository
       const progressDoc = await this.progressRepo.createOrUpdateProgress(
         studentId,

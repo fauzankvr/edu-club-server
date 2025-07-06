@@ -48,6 +48,10 @@ import { planController } from "./admin.routes";
 import PayoutRequestModel from "../../infrastructure/database/models/Payout";
 import { ProgressRepository } from "../../infrastructure/repositories/progress.repository";
 import ProgressModel from "../../infrastructure/database/models/ProgressModel";
+import { NotificationRepository } from "../../infrastructure/repositories/notification.repository";
+import { NotificationUseCase } from "../../application/useCase/notificaion.usecase";
+import { NotificationController } from "../controllers/notification.controller";
+import { NotificationModel } from "../../infrastructure/database/models/NotificationModel";
 
 // Create dependencies
 const studentRepo = new StudentRepository(StudentModel);
@@ -55,6 +59,13 @@ const otpRepo = new OtpRepository(OtpModel)
 const whishlistRepo = new WishlistRepository(WishlistModel)
 const studentUseCase = new StudentUseCase(studentRepo, whishlistRepo);
 const studetnController = new StudentController(studentUseCase);
+
+const notificationRepo = new NotificationRepository(NotificationModel)
+const notificationUseCase = new NotificationUseCase(notificationRepo)
+export const notificationController = new NotificationController(
+  notificationUseCase,
+  studentUseCase
+);
 
 const instrucotRepo = new InstructorRepository(InstructorModal)
 const messageRepo = new MessageRepository(MessageModel)
@@ -182,6 +193,10 @@ router.get("/student/courses/enrolled", verifyStudent, async (req, res) => {
 
 router.get("/student/getCurriculum/:courseId", async (req, res) => {
   await courseController.getCurriculum(req, res);
+});
+
+router.get("/student/getAllProgress",verifyStudent, async (req, res) => {
+  await courseController.getAllProgress(req,res)
 });
 
 router.get("/student/getProgress/:studentId/:courseId", async (req, res) => {
@@ -350,5 +365,20 @@ router.post("/plan/checkout/capture", async (req, res) => {
 router.get("/student/plan", verifyStudent, async (req, res) => {
   await planController.getOrderedPlan(req, res);
 });
+
+router.get(
+  "/student/notifications",
+  verifyStudent, async (req, res) => {
+    await notificationController.getNotifications(req, res)
+  }
+);
+
+router.patch(
+  "/student/notifications/:id",
+  verifyStudent, async (req, res) => {
+    notificationController.markAsRead(req,res)
+  }
+);
+
 
 export default router;

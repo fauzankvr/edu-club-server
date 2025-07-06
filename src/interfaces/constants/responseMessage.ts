@@ -208,3 +208,12 @@ export const FAILED_CHECKOUTS_FETCHED = "Failed to fetch checkouts";
 
 export const FAILED_ORDER_FETCH = "Failed to fetch orders";
 export const SUCCESS_ORDERS_FETCHED = "Orders fetched successfully";
+
+export const SUCCESS_NOTIFICATION_CREATE = "Notification created successfully.";
+export const FAILED_NOTIFICATION_CREATE = "Failed to create notification.";
+export const SUCCESS_NOTIFICATION_FETCH = "Notifications fetched successfully.";
+export const FAILED_NOTIFICATION_FETCH = "Failed to fetch notifications.";
+export const SUCCESS_NOTIFICATION_READ = "Notification marked as read.";
+export const FAILED_NOTIFICATION_READ = "Failed to mark notification as read.";
+export const SUCCESS_NOTIFICATION_CLEAR = "Notifications cleared successfully.";
+export const FAILED_NOTIFICATION_CLEAR = "Failed to clear notifications.";

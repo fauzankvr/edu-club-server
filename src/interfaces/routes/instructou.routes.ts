@@ -33,6 +33,7 @@ import OrderModel from '../../infrastructure/database/models/OrderModel'
 import PayoutRequestModel from '../../infrastructure/database/models/Payout'
 import { ProgressRepository } from '../../infrastructure/repositories/progress.repository'
 import ProgressModel from '../../infrastructure/database/models/ProgressModel'
+import { notificationController } from './student.routes'
 
 
 const instructorRepo = new InstructorRepository(InstructorModel)
@@ -179,5 +180,14 @@ router.get(
     orderController.getDashboardData(req,res)
   }
 );
+
+router.post(
+  "/createNotification",verifyInstructor, async (req, res) => {
+    await notificationController.createNotification(req,res)
+});
+
+router.get("/notifications", verifyInstructor, async (req, res) => {
+  await notificationController.getAllNotification(req, res);
+});
 
 export default router

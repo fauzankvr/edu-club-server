@@ -260,6 +260,35 @@ export class CourseController {
     }
   }
 
+  async getAllProgress(
+    req: IAuthanticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const studentId = (req.student as JwtPayload)?.id;
+
+      if ( !studentId) {
+        res
+          .status(StatusCodes.BAD_REQUEST)
+          .json(errorResponse("Missing parameters"));
+        return;
+      }
+
+      const progress = await this.courseUseCase.getAllProgress(
+        studentId
+      );
+      console.log(progress);
+      res
+        .status(StatusCodes.OK)
+        .json(successResponse("Progress fetched", { progress }));
+    } catch (error) {
+      console.log(error)
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json(errorResponse("Failed to fetch progress"));
+    }
+  }
+
   async getLessonProgress(req: Request, res: Response): Promise<void> {
     try {
       const { courseId, studentId } = req.params;
@@ -285,11 +314,9 @@ export class CourseController {
     }
   }
 
-
   async updateLessonProgress(req: Request, res: Response): Promise<void> {
     try {
-      const { courseId, studentId, sectionId, lectureId, progress } =
-      req.body;
+      const { courseId, studentId, sectionId, lectureId, progress } = req.body;
 
       if (!courseId || !studentId || !progress) {
         res
