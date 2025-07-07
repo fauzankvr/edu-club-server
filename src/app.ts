@@ -36,7 +36,7 @@ app.use(express.static("uploads"));
 // app.set("trust proxy", true);
 
 const limiter = rateLimit({
-  windowMs: 2 * 60 * 1000, // 2 minutes
+  windowMs: 2 * 60 * 1000, 
   max: 120,
   message: {
     success: false,

@@ -3,18 +3,17 @@ import {
   Environment,
   LogLevel,
   OrdersController,
-    ApiError,
-    CheckoutPaymentIntent,
+  ApiError,
+  CheckoutPaymentIntent,
 } from "@paypal/paypal-server-sdk";
 import { Types } from "mongoose";
 import PlanModel from "../database/models/PlanModels";
 import PlanCheckoutModel from "../database/models/PlanCheckoutModel";
 
+const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, EXCHANGE_KEY } = process.env;
 
-const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
-
-if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
-  throw new Error("Missing PayPal environment variables");
+if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET || !EXCHANGE_KEY) {
+  throw new Error("Missing PayPal or exchange rate environment variables");
 }
 
 const client = new Client({
@@ -31,6 +30,23 @@ const client = new Client({
 });
 
 const ordersController = new OrdersController(client);
+
+const newDate = new Date();
+const date = newDate.toISOString().split("T")[0];
+
+const convertINRtoUSD = async (inr: number): Promise<number> => {
+  try {
+    const res = await fetch(
+      `https://api.exchangerate.host/convert?access_key=${EXCHANGE_KEY}&from=INR&to=USD&amount=${inr}&date=${date}`
+    );
+    const data = await res.json();
+    return parseFloat(data.result.toFixed(2));
+  } catch (error) {
+    console.error("Currency conversion failed, fallback to static rate.");
+    const fallbackRate = 0.012;
+    return parseFloat((inr * fallbackRate).toFixed(2));
+  }
+};
 
 export const createPlanOrderService = async (
   planId: string,
@@ -60,91 +76,90 @@ export const createPlanOrderService = async (
     paymentStatus: "pending",
   });
 
-  // In your service file, modify the existingPendingCheckout part:
   if (existingPendingCheckout) {
     try {
-      const orderId = existingPendingCheckout.get("orderId"); 
-      const { result } = await ordersController.getOrder(orderId);
-      const orderDetails = result;
+      const orderId = existingPendingCheckout.paypalOrderId;
+      if(!orderId) return
+      const { body } = await ordersController.getOrder({ id: orderId });
+      const orderDetails = typeof body === "string" ? JSON.parse(body) : body;
 
       if (
         orderDetails.status === "CREATED" ||
         orderDetails.status === "APPROVED"
       ) {
         return {
-          orderId: orderId,
+          orderId,
           status: "PENDING_OK_EXISTS",
         };
       } else {
-        await existingPendingCheckout.deleteOne();
+        await PlanCheckoutModel.deleteOne({ paypalOrderId: orderId });
       }
     } catch (error) {
-      await existingPendingCheckout.deleteOne();
+      await PlanCheckoutModel.deleteOne({
+        paypalOrderId: existingPendingCheckout.paypalOrderId,
+      });
     }
   }
 
-  const priceUSD = plan.price.toFixed(2); // Use USD to match frontend
-  const CURRENCY = "USD"; // Consistent currency
+  const priceINR = plan.price;
+  const priceUSD = await convertINRtoUSD(priceINR);
+  const formattedPriceUSD = priceUSD.toFixed(2);
+  const CURRENCY = "USD";
 
-  // Sanitize plan name and description
   const sanitizedName = plan.name.replace(/[^a-zA-Z0-9 .-]/g, "").slice(0, 127);
   const sanitizedDescription = `Subscription to ${plan.name}`
     .replace(/[^a-zA-Z0-9 .-]/g, "")
-        .slice(0, 127);
-    
-    const orderBody = {
-      body: {
-        intent: CheckoutPaymentIntent.Capture,
-        purchaseUnits: [
-          // Must use camelCase here for SDK validation
-          {
-            amount: {
-              currencyCode: "USD", // camelCase
-              value: priceUSD,
-              breakdown: {
-                itemTotal: {
-                  // camelCase
-                  currencyCode: "USD", // camelCase
-                  value: priceUSD,
-                },
+    .slice(0, 127);
+
+  const orderBody = {
+    body: {
+      intent: CheckoutPaymentIntent.Capture,
+      purchaseUnits: [
+        {
+          amount: {
+            currencyCode: CURRENCY,
+            value: formattedPriceUSD,
+            breakdown: {
+              itemTotal: {
+                currencyCode: CURRENCY,
+                value: formattedPriceUSD,
               },
             },
-            items: [
-              {
-                name: sanitizedName,
-                unitAmount: {
-                  // camelCase
-                  currencyCode: "USD", // camelCase
-                  value: priceUSD,
-                },
-                quantity: "1",
-                description: sanitizedDescription,
-                sku: plan.id.toString(),
-              },
-            ],
           },
-        ],
-      },
-      prefer: "return=minimal",
-    };
+          items: [
+            {
+              name: sanitizedName,
+              unitAmount: {
+                currencyCode: CURRENCY,
+                value: formattedPriceUSD,
+              },
+              quantity: "1",
+              description: sanitizedDescription,
+              sku: plan.id.toString(),
+            },
+          ],
+        },
+      ],
+    },
+    prefer: "return=minimal",
+  };
 
-    try {
-      // Force TypeScript to accept the structure
-      const { result } = await ordersController.createOrder(
-        orderBody 
-      );
-      if (!result.id) {
+  try {
+    const { body } = await ordersController.createOrder(orderBody);
+    if (typeof body === "string") {
+      const jsonResponse = JSON.parse(body);
+      if (!jsonResponse.id) {
         throw new Error("No PayPal order ID received");
       }
 
-      const orderId = result.id;
+      const orderId = jsonResponse.id;
 
       await PlanCheckoutModel.create({
         userId,
         planId,
         paymentStatus: "pending",
-        amount: parseFloat(priceUSD),
-        currency: CURRENCY,
+        amount: priceINR, // Store INR in DB
+        currency: "INR", // Store INR currency
         paymentMethod: "paypal",
         paypalOrderId: orderId,
         startDate: new Date(),
@@ -155,18 +170,21 @@ export const createPlanOrderService = async (
         orderId,
         status: "PENDING",
       };
-    } catch (error) {
-      if (error instanceof ApiError) {
-        console.error("PayPal API Error:", {
-          status: error.statusCode,
-          message: error.message,
-          details: error.result,
-        });
-        throw new Error(`PayPal error: ${error.message}`);
-      }
-      console.error("Unexpected error:", error);
-      throw error;
+    } else {
+      throw new Error("Unexpected PayPal response type");
     }
+  } catch (error) {
+    if (error instanceof ApiError) {
+      console.error("PayPal API Error:", {
+        status: error.statusCode,
+        message: error.message,
+        details: error.result,
+      });
+      throw new Error(`PayPal error: ${error.message}`);
+    }
+    console.error("Unexpected error:", error);
+    throw error;
+  }
 };
 
 export const capturePlanOrderService = async (orderId: string) => {
@@ -174,45 +192,67 @@ export const capturePlanOrderService = async (orderId: string) => {
     throw new Error("Invalid PayPal Order ID");
   }
 
-    try {
-      console.log("ooooooooooorder",orderId)
-        const { body } = await ordersController.captureOrder({ id: orderId });
-        if (typeof body === "string") {
-            const jsonResponse = JSON.parse(body);
+  try {
+    const { body } = await ordersController.captureOrder({ id: orderId });
+    if (typeof body === "string") {
+      const jsonResponse = JSON.parse(body);
+      const captureId =
+        jsonResponse.purchase_units?.[0]?.payments?.captures?.[0]?.id || null;
 
-            // Extract captureId
-            const captureId =
-                jsonResponse.purchase_units?.[0]?.payments?.captures?.[0]?.id || null;
+      if (!captureId) {
+        throw new Error("No capture ID received from PayPal");
+      }
 
-            if (!captureId) {
-                throw new Error("No capture ID received from PayPal");
-            }
-        
+      const updatedCheckout = await PlanCheckoutModel.findOneAndUpdate(
+        { paypalOrderId: orderId },
+        {
+          paymentStatus: "completed",
+          transactionId: captureId,
+          paypalCaptureId: captureId,
+          updatedAt: new Date(),
+        },
+        { new: true }
+      );
 
-            const updatedCheckout = await PlanCheckoutModel.findOneAndUpdate(
-              { paypalOrderId: orderId },
-              {
-                paymentStatus: "completed",
-                transactionId: captureId,
-                paypalCaptureId: captureId,
-                updatedAt: new Date(),
-              },
-              { new: true }
-            );
-        
-            if (!updatedCheckout) {
-                throw new Error("Checkout record not found");
-            }
+      if (!updatedCheckout) {
+        throw new Error("Checkout record not found");
+      }
 
-            return {
-                message: "Payment captured successfully",
-                captureId,
-                orderId: orderId,
-            };
-        }
+      // Optional: Add transaction logic (e.g., payment splits) if applicable
+      // For plans, you may not need instructor/admin splits, but you can add similar logic if required
+      const totalAmount = updatedCheckout.amount; // INR amount
+      const paypalFee = parseFloat((totalAmount * 0.029 + 0.3).toFixed(2)); // Example PayPal fee in INR
+      const netAmount = parseFloat((totalAmount - paypalFee).toFixed(2));
+      const adminShare = parseFloat((netAmount * 0.15).toFixed(2)); // Example 15%
+      const planShare = parseFloat((netAmount * 0.85).toFixed(2)); // Example 85%
+
+      // Example: Create a transaction record (modify schema as needed)
+      /*
+      await TransactionModel.create({
+        userId: updatedCheckout.userId,
+        planId: updatedCheckout.planId,
+        totalAmount,
+        paypalFee,
+        adminShare,
+        planShare,
+        paymentStatus: "COMPLETED",
+        paypalTransactionId: captureId,
+        payoutStatus: "PENDING",
+        createdAt: new Date(),
+      });
+      */
+
+      return {
+        message: "Payment captured successfully",
+        captureId,
+        orderId,
+      };
+    } else {
+      throw new Error("Unexpected PayPal response type");
+    }
   } catch (error) {
     await PlanCheckoutModel.findOneAndUpdate(
-      { orderId: orderId },
+      { paypalOrderId: orderId },
       { paymentStatus: "failed", updatedAt: new Date() },
       { new: true }
     );
