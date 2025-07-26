@@ -373,6 +373,12 @@ router.get(
   }
 );
 
+router.post(
+  "/student/notifications",
+  verifyStudent, async (req, res) => {
+    notificationController.completionNotification(req,res)
+  });
+
 router.patch(
   "/student/notifications/:id",
   verifyStudent, async (req, res) => {

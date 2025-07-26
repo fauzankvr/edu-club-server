@@ -278,7 +278,7 @@ export const captureOrderService = async (orderID: string) => {
     // Update order status to FAILED if capture fails
     await OrderModel.findOneAndUpdate(
       { paypalOrderId: orderID },
-      { status: "FAILED" },
+      { status: "FAILED"},
       { new: true }
     );
 

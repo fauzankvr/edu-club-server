@@ -80,7 +80,6 @@ export class OrderRepository implements IOrderRepo {
   }
 
   async getTotalRevenue(instructorId: string): Promise<number> {
-    console.log("idsssss", instructorId);
     const result = await this.orderModel.aggregate([
       {
         $match: {
@@ -90,7 +89,6 @@ export class OrderRepository implements IOrderRepo {
       },
       { $group: { _id: null, total: { $sum: "$priceUSD" } } },
     ]);
-    console.log("rew", result);
     return result[0]?.total || 0;
   }
 
@@ -220,7 +218,6 @@ export class OrderRepository implements IOrderRepo {
       if (item._id === "COMPLETED") summary.totalPayout = item.total;
       if (item._id === "PENDING") summary.pendingPayout = item.total;
     });
-    console.log(summary);
     return summary;
   }
 

@@ -3,7 +3,7 @@ import  { IInstructor } from "../../infrastructure/database/models/InstructorMod
 import { sendOtpEmail } from "../../infrastructure/services/EmailService";
 import { generateAccessToken, generateRefreshToken, TokenPayload, verifyRefreshToken } from "../../infrastructure/utility/GenarateToken";
 import { generateOtp } from "../../infrastructure/utility/GenerateOtp";
-import { FAILED_RESET_PASSWORD, OTP_SENT, OTP_WAIT, SUCCESS_RESET_PASSWORD, USER_NOT_FOUND } from "../../interfaces/constants/responseMessage";
+import { FAILED_RESET_PASSWORD, INVILED_CURR_PASSWORD, OTP_SENT, OTP_WAIT, SUCCESS_RESET_PASSWORD, USER_NOT_FOUND } from "../../interfaces/constants/responseMessage";
 import IInstructorRepo from "../interface/IInstructorRepo";
 import { IOtpRepo } from "../interface/IotpRepo";
 import bcrypt from "bcrypt";
@@ -25,7 +25,8 @@ export class InstructorUseCase {
     return accessToken;
   }
 
-  async signupAndSendOtp(email: string) {
+  async signupAndSendOtp(applicationData: IInstructor) {
+    let email = applicationData.email;
     const existing = await this.instructorRepo.findInstructorByEmail(email);
     if (existing) throw new Error("User already exists");
 
@@ -39,6 +40,7 @@ export class InstructorUseCase {
     console.log(otp);
     await sendOtpEmail(email, otp);
     await this.otpRepo.createOtp(email, otp);
+    await this.instructorRepo.create(applicationData);
 
     return { message: "OTP sented successfully" };
   }
@@ -59,18 +61,40 @@ export class InstructorUseCase {
     return { message: OTP_SENT };
   }
 
-  async resetPassword(email: string,password: string) {
-      const existing = await this.instructorRepo.findSafeInstructorByEmail(email);
-      if (!existing) throw new Error(USER_NOT_FOUND);
-  
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const createdStudent = await this.instructorRepo.updateById(existing._id.toString(), { password: hashedPassword });
-      if (!createdStudent) {
-        throw new Error(FAILED_RESET_PASSWORD);
-      }
-  
-      return { message: SUCCESS_RESET_PASSWORD };
+  async resetPassword(email: string, password: string) {
+    const existing = await this.instructorRepo.findSafeInstructorByEmail(email);
+    if (!existing) throw new Error(USER_NOT_FOUND);
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const createdStudent = await this.instructorRepo.updateById(
+      existing._id.toString(),
+      { password: hashedPassword, isTempPassword: false }
+    );
+    if (!createdStudent) {
+      throw new Error(FAILED_RESET_PASSWORD);
     }
+
+    return { message: SUCCESS_RESET_PASSWORD };
+  }
+  async changePassword(email: string,currentPassword:string, password: string) {
+    const existing = await this.instructorRepo.findSafeInstructorByEmail(email);
+    if (!existing) throw new Error(USER_NOT_FOUND);
+   if (existing.password) {
+     const isMatch = await bcrypt.compare(currentPassword, existing.password);
+     if (!isMatch) throw new Error(INVILED_CURR_PASSWORD);
+   }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const createdStudent = await this.instructorRepo.updateById(
+      existing._id.toString(),
+      { password: hashedPassword}
+    );
+    if (!createdStudent) {
+      throw new Error(FAILED_RESET_PASSWORD);
+    }
+
+    return { message: SUCCESS_RESET_PASSWORD };
+  }
 
   async verifyOtpAndSignup(
     fullName: string,
@@ -83,16 +107,20 @@ export class InstructorUseCase {
 
     if (!validOtp || validOtp.otp !== otp) throw new Error("Invalid OTP");
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newInstructor = new Instructor(
+    // const newInstructor = new Instructor(
+    //   email,
+    //   hashedPassword,
+    //   false,
+    //   fullName
+    // );
+    // const createdInstructor = await this.instructorRepo.createInstructor(
+    //   newInstructor
+    // );
+    const createdInstructor = await this.instructorRepo.updateProfileByEmail(
       email,
-      hashedPassword,
-      false,
-      fullName
-    );
-    const createdInstructor = await this.instructorRepo.createInstructor(
-      newInstructor
+      { isEmailVerified: true }
     );
 
     await this.otpRepo.deleteOtp(email);
@@ -107,12 +135,28 @@ export class InstructorUseCase {
     if (!InstrucotrData) {
       throw new Error("Instructor not found");
     }
-    if (InstrucotrData.IsBlocked) {
+    if (InstrucotrData.isBlocked) {
       throw new Error("Instructor is blocked");
     }
-    const isMatch = await bcrypt.compare(password, InstrucotrData.password);
+    if (InstrucotrData.isEmailVerified === false) {
+      throw new Error("Email is not verified");
+    }
+    if (InstrucotrData.isApproved === false) {
+      throw new Error("Please wait for admin approval to continue.");
+    }
+    if (InstrucotrData.password === null) {
+      throw new Error("Password not found");
+    }
+
+    const isMatch = await bcrypt.compare(
+      password,
+      InstrucotrData.password as string
+    );
     if (!isMatch) {
       throw new Error("Invalid password");
+    }
+    if (InstrucotrData.isTempPassword) {
+      throw new Error("Please reset your password");
     }
     const TokenPayload: TokenPayload = {
       email: InstrucotrData.email,

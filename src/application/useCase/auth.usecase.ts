@@ -198,7 +198,7 @@ export class AuthUseCase {
       }
       console.log(instructor)
 
-      if (instructor.IsBlocked) {
+      if (instructor.isBlocked) {
         throw new Error(USER_BLOCKED);
       }
 

@@ -45,10 +45,9 @@ export class NotificationController {
         throw new Error("Invalid token payload: Email not found");
       }
 
-      const notifications =
-        await this.notificationUseCase.getAllNotification(
-          instructorId,
-        );
+      const notifications = await this.notificationUseCase.getAllNotification(
+        instructorId
+      );
 
       res.status(StatusCodes.CREATED).json(
         successResponse(SUCCESS_NOTIFICATION_FETCH, {
@@ -114,6 +113,36 @@ export class NotificationController {
       const notifications = await this.notificationUseCase.getNotifications(
         student.id.toString()
       );
+      res
+        .status(StatusCodes.OK)
+        .json(successResponse(SUCCESS_NOTIFICATION_FETCH, { notifications }));
+    } catch (error: any) {
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json(errorResponse(error.message || FAILED_NOTIFICATION_FETCH));
+    }
+  }
+
+  async completionNotification(
+    req: IAuthanticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const student = req.student;
+      if (!student || typeof student === "string" || !("email" in student)) {
+        throw new Error(INVALID_TOKEN);
+      }
+      const data = req.body;
+      if (!data || !data.type || !data.title || !data.message) {
+        throw new Error(STUDENT_DATA_NOT_FOUND);
+      }
+      const notifications = await this.notificationUseCase.createNotification({
+        studentId: student.id.toString(),
+        type: data.type,
+        title: data.title,
+        message: data.message,
+        instructorId: data.instructorId,
+      });
       res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_NOTIFICATION_FETCH, { notifications }));

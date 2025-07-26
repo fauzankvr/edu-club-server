@@ -65,9 +65,16 @@ const orderController = new OrderController(
   instructorUseCase
 );
 
-router.post("/signup", (req, res) => {
-  instructorController.signupInstructor(req, res);
-})
+router.post(
+  "/signup",
+  upload.fields([
+    { name: "profileImage", maxCount: 1 },
+    { name: "certificates", maxCount: 5 },
+  ]),
+  (req, res) => {
+    instructorController.signupInstructor(req, res);
+  }
+);
 
 router.post("/sendOtp",(req,res)=>{
   instructorController.sendOtp(req,res)
@@ -81,6 +88,9 @@ router.post("/resendOtp", (req, res) => {
 router.post("/resetPassword", (req, res) => {
   instructorController.resetPassword(req, res);
 })
+router.post("/changePassword",verifyInstructor, (req, res) => {
+  instructorController.chagePassword(req, res);
+});
 
 router.post("/login", (req, res) => {
   instructorController.loginInstructor(req, res);
@@ -96,7 +106,9 @@ router.get("/profile", verifyInstructor, async (req, res) => {
 router.put(
   "/profile",
   verifyInstructor,
-  upload.single("profileImage"),
+  upload.fields([
+    { name: "profileImage", maxCount: 1 },
+  ]),
   async (req, res) => {
     await instructorController.updateProfile(req, res);
   }

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AdminUseCase } from "../../application/useCase/AdminUseCase";
 import { approvePayoutService } from "../../infrastructure/services/approvePayoutService";
 import {
+  FAILED_APPROVED_INSTRUCTOR,
   FAILED_BOLOKED_INSTUCTOR,
   FAILED_BOLOKED_STUDENT,
   FAILED_PAYOUT_FETCH,
@@ -16,6 +17,7 @@ import {
   PAYOUT_UPDATE_SUCCESS,
   STUDENTS_FETCH_FAILE,
   STUDENTS_FETCH_SUCCESS,
+  SUCCESS_APPROVED_INSTRUCTOR,
   SUCCESS_BLOCKD_INSTUCTOR,
   SUCCESS_BLOCKD_STUDENT,
 } from "../constants/responseMessage";
@@ -74,7 +76,7 @@ class AdminController {
         .status(StatusCodes.BAD_REQUEST)
         .json(
           errorResponse(
-          error instanceof Error ? error.message : STUDENTS_FETCH_FAILE
+            error instanceof Error ? error.message : STUDENTS_FETCH_FAILE
           )
         );
     }
@@ -110,6 +112,24 @@ class AdminController {
         .json(
           errorResponse(
             error instanceof Error ? error.message : FAILED_BOLOKED_INSTUCTOR
+          )
+        );
+    }
+  };
+  approveInstructor = async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      await this.AdminUseCase.approveTeacher(email); // changed method name
+
+      return res
+        .status(StatusCodes.OK)
+        .json(successResponse(SUCCESS_APPROVED_INSTRUCTOR));
+    } catch (error: unknown) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(
+          errorResponse(
+            error instanceof Error ? error.message : FAILED_APPROVED_INSTRUCTOR
           )
         );
     }

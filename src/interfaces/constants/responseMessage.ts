@@ -47,7 +47,8 @@ export const SUCCESS_MESSAGE_FEATCH = "Message feached successfully";
 //Auth
 export const NO_EMAIL_PASSWORD_ERROR = "Email and password are required"
 export const LOGIN_FAILED = "Login failed"
-export const lOGOUT_FAILED = "Logout Failed";
+export const lOGOUT_FAILED = "Logout Failed"
+export const INVILED_CURR_PASSWORD = "Current password is incorrect";
 
 
 //student
@@ -217,3 +218,7 @@ export const SUCCESS_NOTIFICATION_READ = "Notification marked as read.";
 export const FAILED_NOTIFICATION_READ = "Failed to mark notification as read.";
 export const SUCCESS_NOTIFICATION_CLEAR = "Notifications cleared successfully.";
 export const FAILED_NOTIFICATION_CLEAR = "Failed to clear notifications.";
+
+
+export const SUCCESS_APPROVED_INSTRUCTOR = "Instructor approved successfully.";
+export const FAILED_APPROVED_INSTRUCTOR = "Failed to approve instructor.";

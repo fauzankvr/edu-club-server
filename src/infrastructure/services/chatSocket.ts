@@ -238,6 +238,7 @@ export const setupChatSocket = (io: Server) => {
 
     socket.on("newNotification", async (notification: INotification) => {
       try {
+        console.log('calling notification');
         const clientsInRoom = io.sockets.adapter.rooms.get(`user:${notification.studentId}`);
         const studetnSoket = getSocketIdByUserId(notification.studentId.toString());
         console.log(`Clients in room user:${studetnSoket}`);

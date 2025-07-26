@@ -17,14 +17,13 @@ export class OrderUseCase {
 
   getOrders(userId: string) {
     const res = this.orderRepository.getOrdersByUserId(userId);
-    console.log("res", res);
     if (!res) {
       throw new Error("Failed to retrieve orders");
     }
     return res;
   }
 
-  async requestPayout(instructorMail: string, paypalEmail: string) {
+  async requestPayout(instructorMail: string, paypalEmail: string) { 
     return await requestPayoutService(instructorMail, paypalEmail);
   }
   async getDashboardData(

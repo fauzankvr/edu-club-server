@@ -51,6 +51,9 @@ router.get("/findAllTeachers", verifyAdmin, (req, res) => {
 router.patch("/blockTeacher", (req, res) => {
   controller.blockInstructor(req, res);
 });
+router.patch("/teachers/approve", (req, res) => {
+  controller.approveInstructor(req, res);
+});
 router.patch("/blockStudent", (req, res) => {
   controller.blockStudent(req, res);
 });

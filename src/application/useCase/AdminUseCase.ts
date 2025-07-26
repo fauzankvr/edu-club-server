@@ -4,6 +4,8 @@ import * as XLSX from "xlsx";
 import { Readable } from "stream";
 import bcrypt from "bcrypt"
 import { generateAccessToken, generateRefreshToken } from "../../infrastructure/utility/GenarateToken";
+import { generateTempPassword } from "../../infrastructure/utility/GenerateTempPasw";
+import { sendApprovalEmail } from "../../infrastructure/services/EmailService";
 
 export interface IAdminUseCase {
   loginAdmin(
@@ -90,6 +92,40 @@ export class AdminUseCase {
     const res = await this.instructorRepo.updateById(id, {
       IsBlocked: !instructor.IsBlocked,
     });
+    return res;
+  }
+
+  async approveTeacher(email: string) {
+    // 1. Find the instructor
+    const instructor = await this.instructorRepo.findInstructorByEmail(email);
+    if (!instructor) {
+      throw new Error("Instructor not found");
+    }
+
+    // 2. Generate a temporary password
+    const tempPassword = generateTempPassword(8);
+    console.log('tempPaws', tempPassword);
+
+    // 3. Hash the temporary password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(tempPassword, saltRounds);
+
+    // 4. Update instructor fields
+    const id = instructor._id.toString();
+    const res = await this.instructorRepo.updateById(id, {
+      isBlocked: false, // unblock the user if needed
+      isApproved: true,
+      isTempPassword: true,
+      password: hashedPassword,
+    });
+
+    // 5. Send approval email with credentials
+    try {
+      await sendApprovalEmail(email, tempPassword);
+    } catch (err) {
+      console.error("Failed to send approval email:", err);
+    }
+
     return res;
   }
 

@@ -18,8 +18,7 @@ const NotificationSchema = new Schema<INotification>({
   },
   instructorId: {
     type: Schema.Types.ObjectId,
-    ref: "Instructor",
-    required: true,
+    ref: "Instructor"
   },
   type: {
     type: String,
