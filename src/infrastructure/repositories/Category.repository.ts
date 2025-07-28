@@ -4,7 +4,7 @@ import { ICategoryRepository } from "../../application/interface/ICategoryRepo";
 import { ICategory } from "../database/models/CategoryModel";
 import { BaseRepository } from "./base.repository"; 
 
-
+// class for category
 export class CategoryRepository
   extends BaseRepository<ICategory>
   implements ICategoryRepository
