@@ -1,6 +1,8 @@
 import { Response, Request, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import InstructorModel from "../../infrastructure/database/models/InstructorModel";
+import { StatusCodes } from "../constants/statusCodes";
+import { INVALID_TOKEN_PAYLOAD, TOKEN_EXPIRED, USER_BLOCKED, USER_NOT_FOUND } from "../constants/responseMessage";
 
 export interface IAuthenticatedRequest extends Request {
   instructor?: string | JwtPayload;
@@ -15,7 +17,7 @@ export const verifyInstructor = async (
 ): Promise<void> => {
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (!token) {
-    res.status(401).json({ message: "Unauthorized: No token provided" });
+    res.status(StatusCodes.UNAUTHORIZED).json({ message: INVALID_TOKEN_PAYLOAD });
     return;
   }
 
@@ -25,21 +27,21 @@ export const verifyInstructor = async (
       const instructor = await InstructorModel.findOne({ email: decoded.email });
 
     if (!instructor) {
-      res.status(404).json({ message: "Instructor not found" });
+      res.status(StatusCodes.NOT_FOUND).json({ message: USER_NOT_FOUND });
       return;
     }
 
-    if (instructor.IsBlocked) {
-      res.status(403).json({ message: "User is blocked" });
+    if (instructor.isBlocked) {
+      res.status(StatusCodes.FORBIDDEN).json({ message: USER_BLOCKED});
       return;
     }
 
     next();
   } catch (err: any) {
     if (err.name === "TokenExpiredError") {
-      res.status(401).json({ message: "Unauthorized: Token expired" });
+      res.status(StatusCodes.UNAUTHORIZED).json({ message: TOKEN_EXPIRED });
     } else if (err.name === "JsonWebTokenError") {
-      res.status(401).json({ message: "Unauthorized: Invalid token" });
+      res.status(StatusCodes.UNAUTHORIZED).json({ message: INVALID_TOKEN_PAYLOAD });
     } else {
       next(err);
     }

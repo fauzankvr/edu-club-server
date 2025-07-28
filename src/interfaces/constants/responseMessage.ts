@@ -177,6 +177,8 @@ export const FAILED_ORDER_CAPTURE = "Failed to capture order";
 
 export const INVALID_TOKEN = "Invalid token payload: Email not found";
 export const UNAUTHORIZED = "Unauthorized";
+export const INVALID_TOKEN_PAYLOAD = "Unauthorized: No token provided";
+export const TOKEN_EXPIRED = "Unauthorized: Token expired";
 export const INVALID_CREDENTIALS = "Email and password are required";
 export const INVALID_GOOGLE_TOKEN = "Google token is missing";
 export const FAILED_GOOGLE_LOGIN = "Google login failed";
