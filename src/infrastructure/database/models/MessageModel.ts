@@ -1,5 +1,10 @@
 import mongoose, { Schema, Document } from "mongoose";
-import { Message } from "../../../domain/entities/Message";
+
+// Define the IReaction sub-interface (for reactions array)
+interface IReaction {
+  userId: string;
+  reaction: string; 
+}
 
 // Define the IMessage interface
 export interface IMessage extends Document {
@@ -8,8 +13,16 @@ export interface IMessage extends Document {
   chatId: string;
   createdAt: Date;
   updatedAt: Date;
-  seenBy: [{ type: String }];
+  seenBy: string[]; // Fixed syntax: array of strings
+  deleted: boolean; // Added for soft delete
+  reactions: IReaction[]; // Added for reactions
 }
+
+// Define the Reaction sub-schema
+const ReactionSchema = new Schema<IReaction>({
+  userId: { type: String, required: true },
+  reaction: { type: String, required: true },
+});
 
 // Define the Message schema
 const MessageSchema = new Schema<IMessage>(
@@ -18,9 +31,10 @@ const MessageSchema = new Schema<IMessage>(
     sender: { type: String, required: true },
     chatId: { type: String, required: true },
     seenBy: [{ type: String }],
+    deleted: { type: Boolean, default: false }, // Added for soft delete
+    reactions: [ReactionSchema], // Added for reactions (array of sub-documents)
   },
-  { timestamps: true }
+  { timestamps: true } // Automatically adds createdAt and updatedAt
 );
-
 
 export const MessageModel = mongoose.model<IMessage>("Message", MessageSchema);

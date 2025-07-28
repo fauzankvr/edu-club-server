@@ -10,12 +10,14 @@ import {
 import { INotification } from "../database/models/NotificationModel";
 
 interface Message {
-  id: string;
+  _id?: string;
   chatId: string;
   sender: string;
   text: string;
   createdAt: string;
   seenBy: string[];
+  deleted?: boolean; // Added
+  reactions?: { userId: string; reaction: string }[]; // Added
 }
 
 export const setupChatSocket = (io: Server) => {
@@ -108,6 +110,11 @@ export const setupChatSocket = (io: Server) => {
           sender: msg.sender.toString(),
           createdAt: msg.createdAt.toISOString(),
           seenBy: msg.seenBy.map((id: any) => id.toString()),
+          deleted: msg.deleted, // Added
+          reactions: msg.reactions.map((r) => ({
+            userId: r.userId.toString(),
+            reaction: r.reaction,
+          })), // Added
         }))
       );
       await updateUnseenCount(chatId);
@@ -134,6 +141,8 @@ export const setupChatSocket = (io: Server) => {
             sender,
             text,
             seenBy: [sender],
+            deleted: false, // Added
+            reactions: [], // Added
           });
           await ChatModel.findByIdAndUpdate(chatId, {
             lastMessage: text,
@@ -148,7 +157,7 @@ export const setupChatSocket = (io: Server) => {
           const chat = await ChatModel.findById(chatId)
             .populate("userId")
             .populate("instructorId");
-          if(!chat) return
+          if (!chat) return;
           const userIds = [
             chat?.userId.toString(),
             chat?.instructorId.toString(),
@@ -161,12 +170,17 @@ export const setupChatSocket = (io: Server) => {
           });
 
           const messageToSend: Message = {
-            id: savedMessage.id.toString(),
+            _id: savedMessage.id.toString(),
             chatId: savedMessage.chatId.toString(),
             sender: savedMessage.sender.toString(),
             text: savedMessage.text,
             createdAt: savedMessage.createdAt.toISOString(),
             seenBy: savedMessage.seenBy.map((id: any) => id.toString()),
+            deleted: savedMessage.deleted, // Added
+            reactions: savedMessage.reactions.map((r) => ({
+              userId: r.userId.toString(),
+              reaction: r.reaction,
+            })), // Added
           };
           io.to(chatId).emit("newMessage", messageToSend);
           await updateUnseenCount(chatId);
@@ -204,18 +218,112 @@ export const setupChatSocket = (io: Server) => {
             { $addToSet: { seenBy: userId } }
           );
           const updatedMessage: Message = {
-            id: message.id.toString(),
+            _id: message.id.toString(),
             chatId: message.chatId.toString(),
             text: message.text,
             sender: message.sender.toString(),
             createdAt: message.createdAt.toISOString(),
             seenBy: [...message.seenBy.map((id: any) => id.toString()), userId],
+            deleted: message.deleted, // Added
+            reactions: message.reactions.map((r) => ({
+              userId: r.userId.toString(),
+              reaction: r.reaction,
+            })),  
           };
           io.to(chatId).emit("messageUpdated", updatedMessage);
           await updateUnseenCount(chatId);
         } catch (error) {
           console.error("Error marking message as seen:", error);
           socket.emit("error", { error: "Failed to mark message as seen" });
+        }
+      }
+    );
+
+    // New: Delete message (soft delete)
+    socket.on(
+      "deleteMessage",
+      async ({
+        chatId,
+        messageId,
+        userId,
+      }: {
+        chatId: string;
+        messageId: string;
+        userId: string;
+      }) => {
+        try {
+          if (!mongoose.Types.ObjectId.isValid(messageId)) {
+            socket.emit("error", { error: "Invalid message ID" });
+            return;
+          }
+          const message = await MessageModel.findById(messageId);
+          if (!message || message.sender.toString() !== userId) {
+            socket.emit("error", {
+              error: "You can only delete your own messages",
+            });
+            return;
+          }
+          if (message.deleted) return; // Already deleted
+
+          await MessageModel.updateOne(
+            { _id: messageId },
+            { deleted: true, text: "This message was deleted" }
+          );
+
+          io.to(chatId).emit("messageDeleted", { messageId, chatId });
+        } catch (error) {
+          console.error("Error deleting message:", error);
+          socket.emit("error", { error: "Failed to delete message" });
+        }
+      }
+    );
+
+    // New: Add/Update reaction
+    socket.on(
+      "addReaction",
+      async ({
+        chatId,
+        messageId,
+        userId,
+        reaction,
+      }: {
+        chatId: string;
+        messageId: string;
+        userId: string;
+        reaction: string;
+      }) => {
+        try {
+          console.log("reactd....")
+          console.log(userId,chatId,messageId,reaction)
+          const message = await MessageModel.findById(messageId);
+          if (!message) return;
+
+          // Remove existing reaction from this user if any
+          message.reactions = message.reactions.filter(
+            (r) => r.userId.toString() !== userId
+          );
+          // Add new reaction
+          message.reactions.push({ userId, reaction });
+          await message.save();
+
+          const updatedMessage: Message = {
+            _id: message.id.toString(),
+            chatId: message.chatId.toString(),
+            text: message.text,
+            sender: message.sender.toString(),
+            createdAt: message.createdAt.toISOString(),
+            seenBy: message.seenBy.map((id: any) => id.toString()),
+            deleted: message.deleted,
+            reactions: message.reactions.map((r) => ({
+              userId: r.userId.toString(),
+              reaction: r.reaction,
+            })),
+          };
+          console.log("update",updatedMessage)
+          io.to(chatId).emit("messageUpdated", updatedMessage);
+        } catch (error) {
+          console.error("Error adding reaction:", error);
+          socket.emit("error", { error: "Failed to add reaction" });
         }
       }
     );
@@ -238,10 +346,10 @@ export const setupChatSocket = (io: Server) => {
 
     socket.on("newNotification", async (notification: INotification) => {
       try {
-        console.log('calling notification');
-        const clientsInRoom = io.sockets.adapter.rooms.get(`user:${notification.studentId}`);
-        const studetnSoket = getSocketIdByUserId(notification.studentId.toString());
-        console.log(`Clients in room user:${studetnSoket}`);
+        console.log("calling notification");
+        const studetnSoket = getSocketIdByUserId(
+          notification.studentId.toString()
+        );
         if (!studetnSoket) return;
         io.to(studetnSoket).emit("newNotification", notification);
       } catch (error) {
