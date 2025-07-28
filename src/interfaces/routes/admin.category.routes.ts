@@ -1,6 +1,6 @@
 
 import express from "express";
-import { CategoryRepository } from "../../infrastructure/repositories/category.repository"; 
+import { CategoryRepository } from "../../infrastructure/repositories/categorys.repository"; 
 import { CategoryUseCase } from "../../application/useCase/Category.usercase";
 import CategoryController from "../controllers/category.controller";
 import { CategoryModel } from "../../infrastructure/database/models/CategoryModel";
