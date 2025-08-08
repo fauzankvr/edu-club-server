@@ -92,6 +92,7 @@ export const SUCCESS_RESET_PASSWORD = "Password reset successfully";
 export const FAILED_RESET_PASSWORD = "Failed to reset password";
 export const STUDENT_NOT_FOUND = "Student not found";
 export const INVALID_PASSWORD = "Invalid password";
+export const NEWPASSWORD_MUST_DIFF = "New password must be different from the current password";
 export const USER_BLOCKED = "User is Blocked Please Contact to Admin";
 export const SIGNUP_FAILED = "Issue faced while saving student in DB";
 export const LOGIN_SUCCESS = "Login successful";

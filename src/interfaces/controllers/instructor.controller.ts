@@ -4,8 +4,10 @@ import { InstructorUseCase } from "../../application/useCase/instructor.usecase"
 import { generateAccessToken, TokenPayload, verifyRefreshToken } from "../../infrastructure/utility/GenarateToken";
 import { errorResponse, successResponse } from "../../infrastructure/utility/ResponseCreator";
 import { StatusCodes } from "../constants/statusCodes";
-import { FAILED_OTP_SENT, FAILED_RESET_PASSWORD, OTP_SENT, SUCCESS_RESET_PASSWORD } from "../constants/responseMessage";
+import { FAILED_OTP_SENT, FAILED_RESET_PASSWORD, INVALID_TOKEN, NEWPASSWORD_MUST_DIFF, OTP_SENT, SUCCESS_RESET_PASSWORD, SUCCESS_SIGNUP } from "../constants/responseMessage";
 import { IInstructor } from "../../infrastructure/database/models/InstructorModel";
+import { changePasswordSchema, instructorValidationSchema } from "../../infrastructure/utility/Instructor.validation";
+import z from "zod";
 
 
 export class InstructorController {
@@ -28,6 +30,7 @@ export class InstructorController {
     try {
       const instructor = req.instructor;
       const updateData = req.body as Partial<IInstructor>;
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
       if (
         !instructor ||
@@ -51,18 +54,41 @@ export class InstructorController {
       if (updateData.address && typeof updateData.address === "string") {
         updateData.address = JSON.parse(updateData.address as string);
       }
+            if (
+              updateData.socialMedia &&
+              typeof updateData.socialMedia === "string"
+            ) {
+              updateData.socialMedia = JSON.parse(
+                updateData.socialMedia as string
+              );
+            }
+
       if (
         updateData.certifications &&
         typeof updateData.certifications == "string"
       ) {
         updateData.certifications = JSON.parse(
-          updateData.certifications as string
+        updateData.certifications as string
         );
       }
-      // Handle optional profile image upload
-      if (req.file) {
-        updateData.profileImage = req.file.path;
+      if (updateData.experience) {
+        updateData.experience = Number(updateData.experience);
       }
+ if (updateData.teachingExperience) {
+   updateData.teachingExperience = Number(updateData.teachingExperience);
+      }
+    if (files?.profileImage?.[0]) {
+      updateData.profileImage = files.profileImage[0].path;
+    }
+      
+    const parsed = instructorValidationSchema.safeParse(updateData);
+
+    if (!parsed.success) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        error: parsed.error.issues.map((e) => e.message).join(", "),
+      });
+    }
 
       const result = await this.InstructorUseCase.updateProfile(
         instructor.email,
@@ -140,80 +166,61 @@ export class InstructorController {
         .json({ success: false, message: error.message || "Login failed" });
     }
   };
-  // controllers/instructorController.ts
+
   signupInstructor = async (req: Request, res: Response) => {
     try {
-      const applicationData = req.body as IInstructor;
-      const files = req.files as {
-        [fieldname: string]: Express.Multer.File[];
-      };
+      let applicationData = req.body;
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-      // Parse JSON strings for arrays and nested objects - THIS IS THE FIX
-      if (
-        applicationData.expertise &&
-        typeof applicationData.expertise === "string"
-      ) {
-        applicationData.expertise = JSON.parse(
-          applicationData.expertise as string
-        );
+      // Parse JSON fields
+      if (typeof applicationData.expertise === "string") {
+        applicationData.expertise = JSON.parse(applicationData.expertise);
+      }
+      if (typeof applicationData.languages === "string") {
+        applicationData.languages = JSON.parse(applicationData.languages);
+      }
+      if (typeof applicationData.address === "string") {
+        applicationData.address = JSON.parse(applicationData.address);
       }
 
-      if (
-        applicationData.languages &&
-        typeof applicationData.languages === "string"
-      ) {
-        applicationData.languages = JSON.parse(
-          applicationData.languages as string
-        );
-      }
-
-      if (
-        applicationData.address &&
-        typeof applicationData.address === "string"
-      ) {
-        applicationData.address = JSON.parse(applicationData.address as string);
-      }
-
-      // Handle profile image upload
-      if (files && files.profileImage && files.profileImage[0]) {
+      // Handle files
+      if (files?.profileImage?.[0]) {
         applicationData.profileImage = files.profileImage[0].path;
       }
-      if (files && files.certificates && files.certificates.length > 0) {
-        applicationData.certifications = files.certificates.map(
-          (file) => file.path
-        );
+      if (files?.certificates?.length) {
+        applicationData.certifications = files.certificates.map((f) => f.path);
+      }
+         if (
+           applicationData.socialMedia &&
+           typeof applicationData.socialMedia === "string"
+         ) {
+           applicationData.socialMedia = JSON.parse(
+             applicationData.socialMedia as string
+           );
+         }
+      
+            if (applicationData.experience) {
+              applicationData.experience = Number(applicationData.experience);
+            }
+            if (applicationData.teachingExperience) {
+              applicationData.teachingExperience = Number(
+                applicationData.teachingExperience
+              );
       }
 
-      // Validate required fields
-      const requiredFields = [
-        "email",
-        "fullName",
-        "Biography",
-        "eduQulification",
-        "expertise",
-        "languages",
-        "currentPosition",
-        "workPlace",
-        "address",
-        "paypalEmail",
-      ];
-
-      for (const field of requiredFields) {
-        if (
-          !(applicationData as any)[field] ||
-          (Array.isArray((applicationData as any)[field]) &&
-            (applicationData as any)[field].length === 0)
-        ) {
-          return res.status(400).json({
-            success: false,
-            error: `Missing required field: ${field}`,
-          });
-        }
+      const parsed = instructorValidationSchema.safeParse(applicationData);
+      if (!parsed.success) {
+        return res.status(400).json({
+          success: false,
+          error: parsed.error.issues.map((e) => e.message).join(", "),
+        });
       }
 
+      const validatedData = parsed.data;
       const result = await this.InstructorUseCase.signupAndSendOtp(
-        applicationData
+        validatedData
       );
+
       res.status(200).json({
         success: true,
         result,
@@ -222,15 +229,11 @@ export class InstructorController {
       });
     } catch (err: any) {
       console.error("Application submission error:", err);
-      res.status(400).json({
-        success: false,
-        error: err.message,
-      });
+      res.status(400).json({ success: false, error: err.message });
     }
   };
 
   logOutInstructor = async (req: Request, res: Response) => {
-    console.log("in log out");
     try {
       res.clearCookie("refreshToken", {
         httpOnly: true,
@@ -282,20 +285,47 @@ export class InstructorController {
         typeof instructor === "string" ||
         !("email" in instructor)
       ) {
-        throw new Error("Invalid token payload: Email not found");
+        throw new Error(INVALID_TOKEN);
       }
 
-      const email = instructor.email;
-      const { currentPassword, newPassword } = req.body;
+      const parsed = changePasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(StatusCodes.BAD_REQUEST).json({
+          success: false,
+          error: parsed.error.issues.map((e) => e.message).join(", "),
+        });
+        return; 
+      }
+
+      const { currentPassword, newPassword } = parsed.data;
+
+      if (currentPassword === newPassword) {
+        res.status(StatusCodes.BAD_REQUEST).json({
+          success: false,
+          error: NEWPASSWORD_MUST_DIFF
+        });
+        return;
+      }
+
       const result = await this.InstructorUseCase.changePassword(
-        email,
+        instructor.email,
         currentPassword,
         newPassword
       );
+
       res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_RESET_PASSWORD, { result }));
+      return; 
     } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        res.status(StatusCodes.BAD_REQUEST).json({
+          success: false,
+          error: err.issues.map((e) => e.message).join(", "),
+        });
+        return;
+      }
+
       res
         .status(StatusCodes.BAD_REQUEST)
         .json(errorResponse(err.message || FAILED_RESET_PASSWORD));
@@ -314,7 +344,7 @@ export class InstructorController {
 
       res.status(200).json({
         success: true,
-        message: "Signup successful",
+        message: SUCCESS_SIGNUP,
       });
     } catch (err: any) {
       res.status(401).json({ message: err.message, token: "" });

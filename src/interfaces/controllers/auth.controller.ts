@@ -6,6 +6,7 @@ import { generateAccessToken, verifyRefreshToken } from "../../infrastructure/ut
 import { GoogleAuthServiceImpl } from "../../infrastructure/services/googleAuthServiceImpl";
 import { StudentUseCase } from "../../application/useCase/student.usecase"; 
 import { AuthUseCase } from "../../application/useCase/auth.usecase";
+import { studentSchema } from "../../infrastructure/utility/student.validation";
 
 
 class AuthController {
@@ -151,7 +152,17 @@ class AuthController {
 
   async verifyOtp(req: Request, res: Response): Promise<void> {
     try {
-      const { firstName,lastName, email, otp, password } = req.body;
+      const { firstName, lastName, email, otp, password } = req.body;
+      const parse = studentSchema.safeParse(req.body)
+     if (!parse.success) {
+       const formattedErrors = parse.error.format(); 
+        res.status(StatusCodes.BAD_REQUEST).json({
+         success: false,
+         message: "Validation failed",
+         errors: formattedErrors, 
+        });
+       return
+     }
       const result = await this.authUseCase.verifyOtpAndSignup(
         firstName,
         lastName,

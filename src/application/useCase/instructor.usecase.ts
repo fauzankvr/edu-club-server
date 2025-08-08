@@ -1,3 +1,4 @@
+import z from "zod";
 import { Instructor } from "../../domain/entities/Instructor";
 import  { IInstructor } from "../../infrastructure/database/models/InstructorModel";
 import { sendOtpEmail } from "../../infrastructure/services/EmailService";
@@ -7,6 +8,9 @@ import { FAILED_RESET_PASSWORD, INVILED_CURR_PASSWORD, OTP_SENT, OTP_WAIT, SUCCE
 import IInstructorRepo from "../interface/IInstructorRepo";
 import { IOtpRepo } from "../interface/IotpRepo";
 import bcrypt from "bcrypt";
+
+import { instructorValidationSchema } from "../../infrastructure/utility/Instructor.validation";
+export type InstructorSignupDTO = z.infer<typeof instructorValidationSchema>;
 
 export class InstructorUseCase {
   constructor(
@@ -25,7 +29,7 @@ export class InstructorUseCase {
     return accessToken;
   }
 
-  async signupAndSendOtp(applicationData: IInstructor) {
+  async signupAndSendOtp(applicationData: InstructorSignupDTO) {
     let email = applicationData.email;
     const existing = await this.instructorRepo.findInstructorByEmail(email);
     if (existing) throw new Error("User already exists");
@@ -40,7 +44,14 @@ export class InstructorUseCase {
     console.log(otp);
     await sendOtpEmail(email, otp);
     await this.otpRepo.createOtp(email, otp);
-    await this.instructorRepo.create(applicationData);
+    
+   const instructorData: Partial<IInstructor> = {
+     ...applicationData,
+     phone: Number(applicationData.phone),
+   };
+
+   await this.instructorRepo.create(instructorData);
+
 
     return { message: "OTP sented successfully" };
   }
@@ -76,18 +87,22 @@ export class InstructorUseCase {
 
     return { message: SUCCESS_RESET_PASSWORD };
   }
-  async changePassword(email: string,currentPassword:string, password: string) {
+  async changePassword(
+    email: string,
+    currentPassword: string,
+    password: string
+  ) {
     const existing = await this.instructorRepo.findSafeInstructorByEmail(email);
     if (!existing) throw new Error(USER_NOT_FOUND);
-   if (existing.password) {
-     const isMatch = await bcrypt.compare(currentPassword, existing.password);
-     if (!isMatch) throw new Error(INVILED_CURR_PASSWORD);
-   }
+    if (existing.password) {
+      const isMatch = await bcrypt.compare(currentPassword, existing.password);
+      if (!isMatch) throw new Error(INVILED_CURR_PASSWORD);
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const createdStudent = await this.instructorRepo.updateById(
       existing._id.toString(),
-      { password: hashedPassword}
+      { password: hashedPassword }
     );
     if (!createdStudent) {
       throw new Error(FAILED_RESET_PASSWORD);
