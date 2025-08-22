@@ -1,20 +1,19 @@
 import { Model } from "mongoose";
-import { IOtpRepo } from "../../application/interface/IotpRepo";
+import { IOtpRepository } from "../../application/interface/IotpRepository";
 import { IOtp } from "../database/models/OtpModel";
 
 
-class OtpRepository implements IOtpRepo{
-    constructor(private OtpModel:Model<IOtp>) { }
+class OtpRepository implements IOtpRepository {
+    constructor(private _otpModel: Model<IOtp>) { }
     async createOtp(email: string, otp: string): Promise<IOtp> {
-       return await this.OtpModel.create({ email, otp });
+       return await this._otpModel.create({ email, otp });
     }
     async findOtp(email: string): Promise<IOtp|null> {
-        return await this.OtpModel.findOne({ email }).sort({ createdAt: -1 });
+        return await this._otpModel.findOne({ email }).sort({ createdAt: -1 });
     }
     async deleteOtp(email: string): Promise<any> {
-        return await this.OtpModel.deleteMany({ email})
+        return await this._otpModel.deleteMany({ email})
     }
-
 
 }
 

@@ -1,6 +1,6 @@
 import { IProgress } from "../../infrastructure/database/models/ProgressModel"; 
 
-export interface IProgressRepo {
+export interface IProgressRepository {
   findByStudentAndCourse(
     studentId: string,
     courseId: string

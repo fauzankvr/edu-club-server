@@ -1,14 +1,15 @@
 import { Request, Response } from "express";
-import { CourseUseCase } from "../../application/useCase/course.usecase";
 import { StatusCodes } from "../constants/statusCodes";
-import { FAILED_COURSE_BLOCKED, FAILED_COURSE_CREATED, FAILED_COURSE_FETCH, FAILED_COURSES_FETCH, FAILED_CURRICULUM_FETCH, FAILED_ENROLLED_COURSES_FETCH, INVALID_TOKEN, MISSING_COURSE_ID, SUCCESS_COURSE_BLOCKED, SUCCESS_COURSE_FETCH, SUCCESS_COURSES_CREATE, SUCCESS_COURSES_FETCH, SUCCESS_CURRICULUM_FETCH, SUCCESS_ENROLLED_COURSES_FETCH } from "../constants/responseMessage";
+import { COURSE_UPDATE_SUCCESS, CURRICULUM_UPDATE_FAILED, CURRICULUM_UPDATE_SUCCESS, CURRICULUM_UPLOAD_FAILED, CURRICULUM_UPLOAD_SUCCESS, FAILED_COURSE_BLOCKED, FAILED_COURSE_CREATED, FAILED_COURSE_FETCH, FAILED_COURSE_UPDATE, FAILED_COURSES_FETCH, FAILED_CURRICULUM_FETCH, FAILED_ENROLLED_COURSES_FETCH, FAILED_PROGRESS_FETCH, FAILED_PROGRESS_UPDATE, INVALID_TOKEN, MISSING_COURSE_ID, PROGRESS_FETCH_SUCCESS, PROGRESS_UPDATE_SUCCESS, SUCCESS_COURSE_BLOCKED, SUCCESS_COURSE_FETCH, SUCCESS_COURSES_CREATE, SUCCESS_COURSES_FETCH, SUCCESS_CURRICULUM_FETCH, SUCCESS_ENROLLED_COURSES_FETCH } from "../constants/responseMessage";
 import { errorResponse, successResponse } from "../../infrastructure/utility/ResponseCreator";
 import { IAuthanticatedRequest } from "../middlewares/ExtractUser";
 import { IAuthenticatedRequest } from "../middlewares/ExtractInstructor";
 import { JwtPayload } from "jsonwebtoken";
+import { ICourseUseCase } from "../../application/interface/ICourseUseCase";
+import { CourseSchema } from "../../infrastructure/utility/course.validation";
 
 export class CourseController {
-  constructor(private courseUseCase: CourseUseCase) {}
+  constructor(private _courseUseCase: ICourseUseCase) {}
 
   createCourse = async (req: IAuthenticatedRequest, res: Response) => {
     const instructor = (req.instructor as JwtPayload)?.email;
@@ -25,8 +26,21 @@ export class CourseController {
 
       const courseImageId = req.file?.path || "";
 
+   const parse = CourseSchema.safeParse(req.body);
+
+   if (!parse.success) {
+     const formattedErrors = parse.error.format();
+
+     res.status(StatusCodes.BAD_REQUEST).json({
+       success: false,
+       message: "Validation failed",
+       errors: formattedErrors,
+     });
+     return;
+   }
+
       const students: [] = [];
-      const course = await this.courseUseCase.createNewCourse({
+      const course = await this._courseUseCase.createNewCourse({
         title,
         description,
         language,
@@ -66,7 +80,7 @@ export class CourseController {
       } = req.query as any;
 
       const { courses, total, languages, categories } =
-        await this.courseUseCase.getFilterdCourses(
+        await this._courseUseCase.getFilterdCourses(
           search,
           skip,
           limit,
@@ -98,7 +112,7 @@ export class CourseController {
   async getCourseById(req: Request, res: Response): Promise<void> {
     try {
       const { courseId } = req.params;
-      const course = await this.courseUseCase.getCourseById(courseId);
+      const course = await this._courseUseCase.getCourseById(courseId);
       if (!course) {
         res
           .status(StatusCodes.NOT_FOUND)
@@ -118,7 +132,7 @@ export class CourseController {
   async getCourseByOrderId(req: Request, res: Response): Promise<void> {
     try {
       const { orderId } = req.params;
-      const course = await this.courseUseCase.getCourseByOrderId(orderId);
+      const course = await this._courseUseCase.getCourseByOrderId(orderId);
       if (!course) {
         res
           .status(StatusCodes.NOT_FOUND)
@@ -137,10 +151,15 @@ export class CourseController {
 
   async getAllCoursesAdmin(req: Request, res: Response): Promise<void> {
     try {
-      const courses = await this.courseUseCase.getAdminAllCourses();
+      const limit = parseInt(req.query.limit as string) || 10;
+      const page = parseInt(req.query.page as string) || 1;
+      const skip = (page - 1) * limit;
+      const courses = await this._courseUseCase.getAdminAllCourses(limit, skip);
+      const total = await this._courseUseCase.getAdminCourseCount();
+      const totalPages = Math.ceil(total / limit);
       res
         .status(StatusCodes.OK)
-        .json(successResponse(SUCCESS_COURSES_FETCH, { courses }));
+        .json(successResponse(SUCCESS_COURSES_FETCH, { courses, totalPages }));
     } catch (error) {
       res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
@@ -158,7 +177,7 @@ export class CourseController {
         res.status(StatusCodes.UNAUTHORIZED).json(errorResponse(INVALID_TOKEN));
         return;
       }
-      const courses = await this.courseUseCase.getInstructorAllCourses(
+      const courses = await this._courseUseCase.getInstructorAllCourses(
         instructor
       );
       res
@@ -174,7 +193,7 @@ export class CourseController {
   async getFullCourse(req: Request, res: Response): Promise<void> {
     try {
       const { orderId } = req.params;
-      const course = await this.courseUseCase.getCourseByOrderId(orderId);
+      const course = await this._courseUseCase.getCourseByOrderId(orderId);
       if (!course) {
         res
           .status(StatusCodes.NOT_FOUND)
@@ -182,7 +201,7 @@ export class CourseController {
         return;
       }
       const id = course._id.toString();
-      const curriculum = await this.courseUseCase.getCurriculam(id);
+      const curriculum = await this._courseUseCase.getCurriculam(id);
       res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_COURSE_FETCH, { course, curriculum }));
@@ -199,18 +218,17 @@ export class CourseController {
       if (req.file) {
         updateData.courseImageId = req.file.path;
       }
-      const updatedCourse = await this.courseUseCase.updateCourse(
+      const updatedCourse = await this._courseUseCase.updateCourse(
         courseId,
         updateData
       );
-      return res.status(200).json({
-        message: "Course updated successfully",
+      return res.status(StatusCodes.OK).json({
+        message: COURSE_UPDATE_SUCCESS,
         course: updatedCourse,
       });
     } catch (error: any) {
-      console.error("Error in updateCourse:", error);
-      return res.status(500).json({
-        message: "Failed to update course",
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        message: FAILED_COURSE_UPDATE,
         error: error.message,
       });
     }
@@ -225,7 +243,7 @@ export class CourseController {
           .json(errorResponse(MISSING_COURSE_ID));
         return;
       }
-      await this.courseUseCase.toggleCourseBlock(courseId);
+      await this._courseUseCase.toggleCourseBlock(courseId);
       res.status(StatusCodes.OK).json(successResponse(SUCCESS_COURSE_BLOCKED));
     } catch (error) {
       res
@@ -243,7 +261,7 @@ export class CourseController {
           .json(errorResponse(MISSING_COURSE_ID));
         return;
       }
-      const curriculum = await this.courseUseCase.getCurriculum(courseId);
+      const curriculum = await this._courseUseCase.getCurriculum(courseId);
       if (!curriculum) {
         res
           .status(StatusCodes.NOT_FOUND)
@@ -274,7 +292,7 @@ export class CourseController {
         return;
       }
 
-      const progress = await this.courseUseCase.getAllProgress(
+      const progress = await this._courseUseCase.getAllProgress(
         studentId
       );
       console.log(progress);
@@ -300,17 +318,17 @@ export class CourseController {
         return;
       }
 
-      const progress = await this.courseUseCase.getLessonProgress(
+      const progress = await this._courseUseCase.getLessonProgress(
         courseId,
         studentId
       );
       res
         .status(StatusCodes.OK)
-        .json(successResponse("Progress fetched", { progress }));
+        .json(successResponse(PROGRESS_FETCH_SUCCESS, { progress }));
     } catch (error) {
       res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
-        .json(errorResponse("Failed to fetch progress"));
+        .json(errorResponse(FAILED_PROGRESS_FETCH));
     }
   }
 
@@ -325,7 +343,7 @@ export class CourseController {
         return;
       }
 
-      const updated = await this.courseUseCase.updateLessonProgress(
+      const updated = await this._courseUseCase.updateLessonProgress(
         courseId,
         studentId,
         sectionId,
@@ -335,11 +353,11 @@ export class CourseController {
 
       res
         .status(StatusCodes.OK)
-        .json(successResponse("Progress updated", { updated }));
+        .json(successResponse(PROGRESS_UPDATE_SUCCESS, { updated }));
     } catch (error) {
       res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
-        .json(errorResponse("Failed to update progress"));
+        .json(errorResponse(FAILED_PROGRESS_UPDATE));
     }
   }
 
@@ -359,7 +377,7 @@ export class CourseController {
       const pdfFiles = files.pdfs || [];
 
       // Now you can pass them to your use case or save in DB
-      const curriculum = await this.courseUseCase.saveCurriculum(
+      const curriculum = await this._courseUseCase.saveCurriculum(
         courseId,
         instructor,
         sections,
@@ -368,13 +386,12 @@ export class CourseController {
       );
 
       return res
-        .status(200)
-        .json({ message: "Curriculum uploaded successfully", curriculum });
+        .status(StatusCodes.OK)
+        .json({ message: CURRICULUM_UPLOAD_SUCCESS, curriculum });
     } catch (error: any) {
-      console.error("Upload Curriculum Error:", error);
       return res
-        .status(500)
-        .json({ message: "Failed to upload curriculum", error: error.message });
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json({ message: CURRICULUM_UPLOAD_FAILED, error: error.message });
     }
   };
 
@@ -391,7 +408,7 @@ export class CourseController {
       const videoFiles = files?.videos || [];
       const pdfFiles = files?.pdfs || [];
 
-      const result = await this.courseUseCase.saveCurriculum(
+      const result = await this._courseUseCase.saveCurriculum(
         courseId,
         instructor,
         sections,
@@ -400,16 +417,15 @@ export class CourseController {
       );
 
       if (!result) {
-        return res.status(400).json({ message: "Failed to update curriculum" });
+        return res.status(StatusCodes.BAD_REQUEST).json({ message: CURRICULUM_UPDATE_FAILED });
       }
 
-      return res.status(200).json({
-        message: "Curriculum updated successfully",
+      return res.status(StatusCodes.OK).json({
+        message: CURRICULUM_UPDATE_SUCCESS,
       });
     } catch (error: any) {
-      console.error("Error in updateCurriculum:", error);
-      return res.status(500).json({
-        message: "Failed to update curriculum",
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        message: CURRICULUM_UPDATE_FAILED,
         error: error.message,
       });
     }
@@ -424,7 +440,7 @@ export class CourseController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const enrolledCourses = await this.courseUseCase.getEnrolledCourses(
+      const enrolledCourses = await this._courseUseCase.getEnrolledCourses(
         student.email
       );
       res.status(StatusCodes.OK).json(

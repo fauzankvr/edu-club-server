@@ -15,14 +15,15 @@ import {
   CATEGORY_TOGGLE_FAILED,
   CATEGORY_TOGGLE_SUCCESS,
 } from "../constants/responseMessage";
+import { ICategoryUseCase } from "../../application/interface/ICategoryUseCase";
 
 class CategoryController {
-  constructor(private categoryUseCase: CategoryUseCase) {}
+  constructor(private _categoryUseCase: ICategoryUseCase) {}
 
   async createCategory(req: Request, res: Response) {
     try {
       const categoryData = req.body;
-      const result = await this.categoryUseCase.createCategory(categoryData);
+      const result = await this._categoryUseCase.createCategory(categoryData);
 
       return res
         .status(StatusCodes.CREATED)
@@ -40,10 +41,15 @@ class CategoryController {
 
   async getAllCategories(req: Request, res: Response) {
     try {
-      const result = await this.categoryUseCase.getAllCategories();
+      const page = req.query.page ? Number(req.query.page) : 1;
+      const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const skip = (page - 1) * limit;
+      const result = await this._categoryUseCase.getAllCategories(limit, skip);
+      const total = await this._categoryUseCase.getCategoryCount();
+      const pages = Math.ceil(total / limit);
       return res
         .status(StatusCodes.OK)
-        .json(successResponse(CATEGORY_FETCH_SUCCESS, result));
+        .json(successResponse(CATEGORY_FETCH_SUCCESS, { result, pages }));
     } catch (error: unknown) {
       return res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
@@ -57,7 +63,7 @@ class CategoryController {
 
   async getNotBlockedCategories(req: Request, res: Response) {
     try {
-      const result = await this.categoryUseCase.getNotBlockedCategories();
+      const result = await this._categoryUseCase.getNotBlockedCategories();
       return res
         .status(StatusCodes.OK)
         .json(successResponse(CATEGORY_FETCH_SUCCESS, result));
@@ -76,7 +82,7 @@ class CategoryController {
     try {
       const { id } = req.params;
       const categoryData = req.body;
-      const result = await this.categoryUseCase.updateCategory(
+      const result = await this._categoryUseCase.updateCategory(
         id,
         categoryData
       );
@@ -96,7 +102,7 @@ class CategoryController {
   async toggleCategoryBlockStatus(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const result = await this.categoryUseCase.toggleBlockStatus(id);
+      const result = await this._categoryUseCase.toggleBlockStatus(id);
       return res
         .status(StatusCodes.OK)
         .json(successResponse(CATEGORY_TOGGLE_SUCCESS, result));

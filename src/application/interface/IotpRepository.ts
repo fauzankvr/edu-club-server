@@ -1,6 +1,6 @@
 import { IOtp } from "../../infrastructure/database/models/OtpModel";
 
-export interface IOtpRepo {
+export interface IOtpRepository {
     createOtp(email: string, otp: string): Promise<IOtp>;
     deleteOtp(email: string): Promise<any>;
     findOtp(email: string): Promise<IOtp|null>;

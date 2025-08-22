@@ -1,5 +1,5 @@
 import { Model } from "mongoose";
-import IInstructorRepo from "../../application/interface/IInstructorRepo";
+import IInstructorRepo from "../../application/interface/IInstructorRepository";
 import { Instructor } from "../../domain/entities/Instructor";
 import {IInstructor} from "../database/models/InstructorModel";
 import { BaseRepository } from "./base.repository";
@@ -8,12 +8,12 @@ export class InstructorRepository
   extends BaseRepository<IInstructor>
   implements IInstructorRepo
 {
-  constructor(private InstructorModal: Model<IInstructor>) {
-    super(InstructorModal)
+  constructor(private _instructorModal: Model<IInstructor>) {
+    super(_instructorModal);
   }
 
   async createInstructor(instructor: Instructor): Promise<IInstructor> {
-    return this.InstructorModal.create({
+    return this._instructorModal.create({
       email: instructor.email,
       password: instructor.password,
       isBlocked: false,
@@ -27,26 +27,26 @@ export class InstructorRepository
   }
 
   async findById(id: string): Promise<IInstructor | null> {
-    return this.InstructorModal.findById(id);
+    return this._instructorModal.findById(id);
   }
 
   async findInstructorByEmail(email: string): Promise<IInstructor | null> {
-    return this.InstructorModal.findOne({ email });
+    return this._instructorModal.findOne({ email });
   }
 
   async findAllInstructors(): Promise<IInstructor[]> {
-    return this.InstructorModal.find();
+    return this._instructorModal.find().sort({ createdAt: -1 });
   }
 
   async findSafeInstructorByEmail(email: string): Promise<IInstructor | null> {
-    return this.InstructorModal.findOne({ email });
+    return this._instructorModal.findOne({ email });
   }
 
   async updateProfileByEmail(
     email: string,
     updateData: Partial<IInstructor>
   ): Promise<IInstructor | null> {
-    return this.InstructorModal.findOneAndUpdate(
+    return this._instructorModal.findOneAndUpdate(
       { email },
       { $set: updateData },
       { new: true, projection: "-password" }
@@ -54,13 +54,13 @@ export class InstructorRepository
   }
 
   async getAllStudents(): Promise<IInstructor[]> {
-    return this.InstructorModal.find();
+    return this._instructorModal.find();
   }
 
   async updatePaypalEmail(
     email: string,
     paypalEmail: string
   ): Promise<{ modifiedCount: number }> {
-    return this.InstructorModal.updateOne({ email }, { paypalEmail });
+    return this._instructorModal.updateOne({ email }, { paypalEmail });
   }
 }

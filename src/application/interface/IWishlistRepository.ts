@@ -1,6 +1,6 @@
 import { IWishlist } from "../../infrastructure/database/models/WishlistModel";
 
-export interface IWishlistRepo {
+export interface IWishlistRepository {
   findWishlist(studentId: string, courseId: string): Promise<IWishlist | null>;
     addCourseToWishlist(studentId: string, courseId: string): Promise<IWishlist>;
       removeCourseFromWishlist(

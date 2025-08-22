@@ -1,23 +1,25 @@
 import { Course } from "../../domain/entities/Course";
-import { ISection } from "../../infrastructure/database/models/CarriculamModel";
+import { ICurriculum, ISection } from "../../infrastructure/database/models/CarriculamModel";
 import { ICourse } from "../../infrastructure/database/models/CourseModel";
 import { COURSE_NOT_FOUND, CURRICULUM_NOT_FOUND, ORDER_NOT_FOUND, STUDENT_NOT_FOUND } from "../../interfaces/constants/responseMessage";
-import ICourseRepo from "../interface/ICourseRepo";
-import ICurriculumRepo from "../interface/ICurriculamRepo";
-import { IOrderRepo } from "../interface/IOrderRepo";
-import IStudentRepo from "../interface/IStudentRepo";
+import { IOrderRepository } from "../interface/IOrderRepository";
 import { CreateCourseDTO } from "../interface/Dto/courseDto"; 
-import { IProgressRepo } from "../interface/IProgressRepo";
+import { IProgressRepository } from "../interface/IProgressRepository";
 import { IProgress } from "../../infrastructure/database/models/ProgressModel";
+import { ICourseUseCase } from "../interface/ICourseUseCase";
+import { IOrder } from "../../infrastructure/database/models/OrderModel";
+import IStudentRepository from "../interface/IStudentRepository";
+import ICourseRepository from "../interface/ICourseRepository";
+import ICurriculumRepository from "../interface/ICurriculamRepository";
 
 
-export class CourseUseCase {
+export class CourseUseCase implements ICourseUseCase {
   constructor(
-    private courseRepo: ICourseRepo,
-    private curriculamRepo: ICurriculumRepo,
-    private orderRepo: IOrderRepo,
-    private studentRepo: IStudentRepo,
-    private progressRepo: IProgressRepo
+    private _courseRepository: ICourseRepository,
+    private _curriculumRepository: ICurriculumRepository,
+    private _orderRepository: IOrderRepository,
+    private _studentRepository: IStudentRepository,
+    private _progressRepository: IProgressRepository
   ) {}
 
   async getFilterdCourses(
@@ -30,9 +32,14 @@ export class CourseUseCase {
     rating?: string,
     priceMin?: string,
     priceMax?: string
-  ) {
+  ): Promise<{
+    courses: ICourse[];
+    total: number;
+    languages: string[];
+    categories: string[];
+  }> {
     const { courses, total, languages, categories } =
-      await this.courseRepo.getFilterdCourses(
+      await this._courseRepository.getFilterdCourses(
         search,
         skip,
         limit,
@@ -61,8 +68,7 @@ export class CourseUseCase {
     );
 
     if (!course.isValid()) throw new Error("Invalid course data");
-    console.log(course);
-    const samecoure = await this.courseRepo.findCourseByTitle(
+    const samecoure = await this._courseRepository.findCourseByTitle(
       course.title,
       course.instructor
     );
@@ -72,12 +78,12 @@ export class CourseUseCase {
         "Course with this title already exists for this instructor"
       );
     }
-    const res = await this.courseRepo.createCourse(course);
+    const res = await this._courseRepository.createCourse(course);
     return res;
   }
 
   async getAllCourses(email: string) {
-    const courses = await this.courseRepo.getAllCourses(email);
+    const courses = await this._courseRepository.getAllCourses(email);
 
     if (!courses) {
       throw new Error("Failed to retrieve courses");
@@ -85,17 +91,20 @@ export class CourseUseCase {
 
     return courses;
   }
-  async getAdminAllCourses() {
-    const courses = await this.courseRepo.getAdminAllCourses();
-
+  async getAdminAllCourses(limit: number, skip: number) {
+    const courses = await this._courseRepository.getAdminAllCourses(limit, skip);
     if (!courses) {
       throw new Error("Failed to retrieve courses");
     }
 
     return courses;
   }
+  getAdminCourseCount(): Promise<number> {
+    return this._courseRepository.getAdminCourseCount();
+  }
+
   async getCourseById(id: string) {
-    const res = await this.courseRepo.getCourseById(id);
+    const res = await this._courseRepository.getCourseById(id);
     if (!res) {
       throw new Error("Faild to retrive course");
     }
@@ -107,12 +116,12 @@ export class CourseUseCase {
     updateData: Partial<ICourse>
   ): Promise<ICourse> {
     // ── 1. Make sure the course exists
-    const course = await this.courseRepo.getCourseById(id);
+    const course = await this._courseRepository.getCourseById(id);
     if (!course) throw new Error("Course not found");
 
     // ── 2. If the title is changing, check for duplicates **for the same instructor**
     if (updateData.title && updateData.title !== course.title) {
-      const duplicate = await this.courseRepo.findCourseByTitle(
+      const duplicate = await this._courseRepository.findCourseByTitle(
         updateData.title,
         course.instructor ?? ""
       );
@@ -125,14 +134,14 @@ export class CourseUseCase {
     }
 
     // ── 3. Perform the update
-    const updated = await this.courseRepo.updateCourseById(id, updateData);
+    const updated = await this._courseRepository.updateCourseById(id, updateData);
     if (!updated) throw new Error("Failed to update course");
 
     return updated;
   }
 
-  async getCurriculam(id: string) {
-    const curriculum = await this.curriculamRepo.getCurriculumByCourseId(id);
+  async getCurriculam(id: string): Promise<ICurriculum> {
+    const curriculum = await this._curriculumRepository.getCurriculumByCourseId(id);
 
     if (!curriculum) {
       throw new Error("Failed to retrieve curriculum");
@@ -169,7 +178,7 @@ export class CourseUseCase {
       });
 
       // Now call the CurriculumRepo to save it
-      await this.curriculamRepo.saveCurriculum(courseId, instructor, sections);
+      await this._curriculumRepository.saveCurriculum(courseId, instructor, sections);
 
       return true;
     } catch (error) {
@@ -178,14 +187,14 @@ export class CourseUseCase {
     }
   }
 
-  async toggleCourseBlock(id: string) {
+  async toggleCourseBlock(id: string): Promise<ICourse | null> {
     try {
-      const course = await this.courseRepo.getBlockedCourseById(id);
+      const course = await this._courseRepository.getBlockedCourseById(id);
       if (!course) {
         throw new Error("Course not found");
       }
 
-      const updated = await this.courseRepo.updateCourseById(id, {
+      const updated = await this._courseRepository.updateCourseById(id, {
         isBlocked: !course.isBlocked,
       });
 
@@ -197,15 +206,15 @@ export class CourseUseCase {
   }
 
   async getInstructorAllCourses(email: string) {
-    return this.courseRepo.getAllInstructorCourses(email);
+    return this._courseRepository.getAllInstructorCourses(email);
   }
 
   async getCourseByOrderId(orderId: string) {
-    const order = await this.orderRepo.getOrderById(orderId);
+    const order = await this._orderRepository.getOrderById(orderId);
     if (!order) {
       throw new Error(ORDER_NOT_FOUND);
     }
-    const course = await this.courseRepo.getCourseById(
+    const course = await this._courseRepository.getCourseById(
       order.courseId.toString()
     );
     if (!course) {
@@ -215,30 +224,28 @@ export class CourseUseCase {
   }
 
   async getCurriculum(id: string) {
-    const curriculum = await this.curriculamRepo.getCurriculumByCourseId(id);
+    const curriculum = await this._curriculumRepository.getCurriculumByCourseId(id);
     if (!curriculum) {
       throw new Error(CURRICULUM_NOT_FOUND);
     }
     return curriculum;
   }
 
-  async getCurriculumTopics(courseId: string) {
-    const curriculum = await this.curriculamRepo.getCarriculamTopics(courseId);
+  async getCurriculumTopics(courseId: string): Promise<ICurriculum> {
+    const curriculum = await this._curriculumRepository.getCarriculamTopics(
+      courseId
+    );
     if (!curriculum) {
       throw new Error(CURRICULUM_NOT_FOUND);
     }
     return curriculum;
   }
 
-  async getAllProgress(
-    studentId: string
-  ): Promise<IProgress[] | null> {
+  async getAllProgress(studentId: string): Promise<IProgress[] | null> {
     try {
-      const progress = await this.progressRepo.findByStudentId(
-        studentId
-      );
+      const progress = await this._progressRepository.findByStudentId(studentId);
       if (!progress) {
-        return null; 
+        return null;
       }
       return progress;
     } catch (error) {
@@ -256,7 +263,7 @@ export class CourseUseCase {
   ): Promise<IProgress | null> {
     try {
       console.log(courseId, studentId);
-      const progress = await this.progressRepo.findByStudentAndCourse(
+      const progress = await this._progressRepository.findByStudentAndCourse(
         studentId,
         courseId
       );
@@ -282,7 +289,7 @@ export class CourseUseCase {
   ): Promise<IProgress> {
     try {
       // Update progress using the repository
-      const progressDoc = await this.progressRepo.createOrUpdateProgress(
+      const progressDoc = await this._progressRepository.createOrUpdateProgress(
         studentId,
         courseId,
         sectionId,
@@ -300,13 +307,13 @@ export class CourseUseCase {
     }
   }
 
-  async getEnrolledCourses(email: string) {
-    const student = await this.studentRepo.findSafeStudentByEmail(email);
+  async getEnrolledCourses(email: string): Promise<any> {
+    const student = await this._studentRepository.findSafeStudentByEmail(email);
     if (!student) {
       throw new Error(STUDENT_NOT_FOUND);
     }
     const studentId = student._id.toString();
-    const courses = await this.orderRepo.findPaidCourses(studentId);
+    const courses = await this._orderRepository.findPaidCourses(studentId);
     return courses;
   }
 }

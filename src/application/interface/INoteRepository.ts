@@ -1,5 +1,5 @@
 
-export interface INoteRepo {
+export interface INoteRepository {
   getNote(id: string, courseId: string): Promise<any>;
   createNote(id: string, data: any): Promise<any>;
   updateNotes(id: string, studentId: string, data: any): Promise<any>;

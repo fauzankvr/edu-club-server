@@ -1,26 +1,28 @@
-import { ILanguage } from "../../infrastructure/database/models/LanguageModel"; 
-import { ILanguageRepo } from "../interface/ILanguageRepository";
+import { ILanguage } from "../../infrastructure/database/models/LanguageModel";
+import { ILanguageRepository } from "../interface/ILanguageRepository";
+import { ILanguageUseCase } from "../interface/ILanguateUseCase";
 
-export class LanguageUseCase {
-  constructor(private readonly languageRepository: ILanguageRepo) {}
-
-  async createLanguage(languageData: ILanguage): Promise<ILanguage> {
-    return this.languageRepository.create(languageData);
+export class LanguageUseCase implements ILanguageUseCase {
+  constructor(private readonly _languageRepository: ILanguageRepository) {}
+  async getTotalLanguagesCount(): Promise<number> {
+    return this._languageRepository.countDocuments();
   }
-
-  async getAllLanguages(): Promise<ILanguage[]> {
-    return this.languageRepository.findAll();
+  async createLanguage(languageData: ILanguage): Promise<ILanguage> {
+    return this._languageRepository.create(languageData);
+  }
+  async getAllLanguages(limit: number, skip: number): Promise<ILanguage[]> {
+    return this._languageRepository.findAllLanguages(limit, skip);
   }
 
   async getNotBlockedLanguages(): Promise<ILanguage[]> {
-    return this.languageRepository.findNotBlocked();
+    return this._languageRepository.findNotBlocked();
   }
 
   async updateLanguage(
     id: string,
     data: Partial<ILanguage>
   ): Promise<ILanguage> {
-    const updatedLanguage = await this.languageRepository.update(id, data);
+    const updatedLanguage = await this._languageRepository.update(id, data);
     if (!updatedLanguage) {
       throw new Error("Language not found");
     }
@@ -28,12 +30,12 @@ export class LanguageUseCase {
   }
 
   async toggleBlockStatus(id: string): Promise<ILanguage> {
-    const language = await this.languageRepository.findById(id);
+    const language = await this._languageRepository.findById(id);
     if (!language) {
       throw new Error("Language not found");
     }
 
-    const updatedLanguage = await this.languageRepository.update(id, {
+    const updatedLanguage = await this._languageRepository.update(id, {
       isBlocked: !language.isBlocked,
     });
 

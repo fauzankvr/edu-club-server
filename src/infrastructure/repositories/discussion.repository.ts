@@ -2,10 +2,10 @@ import { Model } from "mongoose";
 import { IDiscussion, IReply } from "../../application/interface/IDiscussion";
 import OrderModel from "../database/models/OrderModel";
 import StudentModel from "../database/models/StudentModel";
-import { IDiscussionRepo } from "../../application/interface/IDiscussionRepo";
+import { IDiscussionRepository } from "../../application/interface/IDiscussionRepository";
 
-export class DiscussionRepository implements IDiscussionRepo {
-  constructor(private DiscussionModel: Model<IDiscussion>) {}
+export class DiscussionRepository implements IDiscussionRepository {
+  constructor(private _discussionModel: Model<IDiscussion>) {}
 
   async createDiscussion(
     paypalOrderId: string,
@@ -20,7 +20,7 @@ export class DiscussionRepository implements IDiscussionRepo {
           courseId: order.courseId,
           studentId: student._id,
         };
-        const discussion = await this.DiscussionModel.create(discussionData);
+        const discussion = await this._discussionModel.create(discussionData);
         return await discussion.populate(
           "studentId",
           "firstName lastName profileImage"
@@ -34,7 +34,7 @@ export class DiscussionRepository implements IDiscussionRepo {
       const order = await OrderModel.findOne({ paypalOrderId });
       console.log("order",order)
     if (order?.courseId) {
-      return await this.DiscussionModel.find({
+      return await this._discussionModel.find({
         courseId: order.courseId,
       }).populate("studentId", "firstName lastName profileImage");
     }
@@ -42,14 +42,14 @@ export class DiscussionRepository implements IDiscussionRepo {
   }
 
   async findByIdDiscussion(id: string): Promise<IDiscussion | null> {
-    return await this.DiscussionModel.findById(id);
+    return await this._discussionModel.findById(id);
   }
 
   async updateReaction(
     id: string,
     data: Partial<IDiscussion>
   ): Promise<IDiscussion | null> {
-    return await this.DiscussionModel.findByIdAndUpdate(
+    return await this._discussionModel.findByIdAndUpdate(
       id,
       { $set: data },
       { new: true, runValidators: true }
@@ -60,13 +60,13 @@ export class DiscussionRepository implements IDiscussionRepo {
     id: string,
     data: Partial<IDiscussion>
   ): Promise<IDiscussion | null> {
-    return await this.DiscussionModel.findByIdAndUpdate(id, data, {
+    return await this._discussionModel.findByIdAndUpdate(id, data, {
       new: true,
     }).populate("replies.userId", "firstName lastName profileImage");
   }
 
   async findReplayById(id: string): Promise<IReply[]> {
-    const discussion = await this.DiscussionModel.findById(id)
+    const discussion = await this._discussionModel.findById(id)
       .select("replies")
       .populate("replies.userId", "firstName lastName profileImage")
       .lean();

@@ -1,19 +1,19 @@
 import { Model, Types } from "mongoose";
 import { IProgress } from "../database/models/ProgressModel";
 import { BaseRepository } from "./base.repository";
-import { IProgressRepo } from "../../application/interface/IProgressRepo";
+import { IProgressRepository } from "../../application/interface/IProgressRepository";
 import { ICurriculum } from "../database/models/CarriculamModel";
 import InstructorModal from "../database/models/InstructorModel";
 
 export class ProgressRepository
   extends BaseRepository<IProgress>
-  implements IProgressRepo
+  implements IProgressRepository
 {
   constructor(
-    private ProgressModel: Model<IProgress>,
-    private CurriculumModel: Model<ICurriculum>
+    private _progressModel: Model<IProgress>,
+    private _curriculumModel: Model<ICurriculum>
   ) {
-    super(ProgressModel);
+    super(_progressModel);
   }
 
   async findByStudentAndCourse(
@@ -28,12 +28,12 @@ export class ProgressRepository
       ? new Types.ObjectId(courseId)
       : courseId;
 
-    let progressDoc = await this.ProgressModel.findOne({
+    let progressDoc = await this._progressModel.findOne({
       studentId: studentObjectId,
       courseId: courseObjectId,
     }).exec();
     if (!progressDoc) {
-      const curriculum = await this.CurriculumModel.findOne({
+      const curriculum = await this._curriculumModel.findOne({
         courseId: courseObjectId,
       });
       if (!curriculum) {
@@ -49,7 +49,7 @@ export class ProgressRepository
         completed: false,
       }));
 
-      progressDoc = new this.ProgressModel({
+      progressDoc = new this._progressModel({
         studentId: studentObjectId,
         courseId: courseObjectId,
         sections,
@@ -105,11 +105,11 @@ export class ProgressRepository
     if (!Types.ObjectId.isValid(studentId)) {
       throw new Error("Invalid studentId provided");
     }
-    return this.ProgressModel.find({ studentId }).exec();
+    return this._progressModel.find({ studentId }).exec();
   }
 
   async findByStudentId(studentId: string): Promise<IProgress[] | null> {
-    const progresses = await this.ProgressModel.find({ studentId })
+    const progresses = await this._progressModel.find({ studentId })
       .populate({
         path: "courseId",
         select: "title instructor",

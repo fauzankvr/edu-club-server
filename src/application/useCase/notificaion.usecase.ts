@@ -1,12 +1,11 @@
-import { INotificationRepo } from "../interface/INotificationRepo"; 
+import { INotificationRepository } from "../interface/INotificationRepository";
+import { INotificationUseCase } from "../interface/INotificationUseCase";
 
-export class NotificationUseCase {
-  constructor(private notificationRepo: INotificationRepo) {}
+export class NotificationUseCase implements INotificationUseCase {
+  constructor(private _notificationRepository: INotificationRepository) {}
 
-  async getAllNotification(
-    instructorId: string
-  ) {
-    const notifications = await this.notificationRepo.getAllNotification(
+  async getAllNotification(instructorId: string) {
+    const notifications = await this._notificationRepository.getAllNotification(
       instructorId
     );
     if (!notifications) {
@@ -22,9 +21,8 @@ export class NotificationUseCase {
     studentId: string;
     instructorId: string;
   }) {
-    const newNotification = await this.notificationRepo.createNotification(
-      data
-    );
+    const newNotification =
+      await this._notificationRepository.createNotification(data);
     if (!newNotification) {
       throw new Error("Failed to create notification");
     }
@@ -32,9 +30,8 @@ export class NotificationUseCase {
   }
 
   async getNotifications(studentId: string) {
-    const notifications = await this.notificationRepo.getNotificationsByUserId(
-      studentId
-    );
+    const notifications =
+      await this._notificationRepository.getNotificationsByUserId(studentId);
     if (!notifications) {
       throw new Error("Failed to fetch notifications");
     }
@@ -42,7 +39,7 @@ export class NotificationUseCase {
   }
 
   async markAsRead(notificationId: string, studentEmail: string) {
-    const updated = await this.notificationRepo.markNotificationAsRead(
+    const updated = await this._notificationRepository.markNotificationAsRead(
       notificationId
     );
     if (!updated) {
@@ -52,7 +49,7 @@ export class NotificationUseCase {
   }
 
   async clearNotifications(studentId: string) {
-    const cleared = await this.notificationRepo.clearAllNotifications(
+    const cleared = await this._notificationRepository.clearAllNotifications(
       studentId
     );
     if (!cleared) {

@@ -1,21 +1,42 @@
-import { generateRefreshToken, TokenPayload } from "../../infrastructure/utility/GenarateToken"; 
+import {
+  generateRefreshToken,
+  TokenPayload,
+} from "../../infrastructure/utility/GenarateToken";
 import { Student } from "../../domain/entities/Student";
 import { sendOtpEmail } from "../../infrastructure/services/EmailService";
-import { generateAccessToken, verifyRefreshToken } from "../../infrastructure/utility/GenarateToken";
+import {
+  generateAccessToken,
+  verifyRefreshToken,
+} from "../../infrastructure/utility/GenarateToken";
 import { generateOtp } from "../../infrastructure/utility/GenerateOtp";
-import { FAILED_RESET_PASSWORD, INVALID_OTP, INVALID_PASSWORD, LOGIN_SUCCESS, OTP_SENT, OTP_WAIT, SIGNUP_FAILED, STUDENT_NOT_FOUND, SUCCESS_RESET_PASSWORD, SUCCESS_SIGNUP, USER_ALREADY_EXISTS, USER_BLOCKED, VALID_OTP } from "../../interfaces/constants/responseMessage";
+import {
+  FAILED_RESET_PASSWORD,
+  INVALID_OTP,
+  INVALID_PASSWORD,
+  LOGIN_SUCCESS,
+  OTP_SENT,
+  OTP_WAIT,
+  SIGNUP_FAILED,
+  STUDENT_NOT_FOUND,
+  SUCCESS_RESET_PASSWORD,
+  SUCCESS_SIGNUP,
+  USER_ALREADY_EXISTS,
+  USER_BLOCKED,
+  VALID_OTP,
+} from "../../interfaces/constants/responseMessage";
 import { IGoogleAuthService } from "../interface/IGoogleService";
-import { IOtpRepo } from "../interface/IotpRepo";
-import IStudentRepo from "../interface/IStudentRepo";
-import bcrypt from "bcrypt"; 
-import IInstructorRepo from "../interface/IInstructorRepo";
+import { IOtpRepository } from "../interface/IotpRepository";
+import bcrypt from "bcrypt";
 import { Instructor } from "../../domain/entities/Instructor";
+import { IAuthUseCase } from "../interface/IAuthUseCase";
+import IStudentRepository from "../interface/IStudentRepository";
+import IInstructorRepository from "../interface/IInstructorRepository";
 
-export class AuthUseCase {
+export class AuthUseCase implements IAuthUseCase {
   constructor(
-    public studentRepo: IStudentRepo,
-    public otpRepo: IOtpRepo,
-    public instructorRepo: IInstructorRepo
+    private _studentRepository: IStudentRepository,
+    private _otpRepository: IOtpRepository,
+    private _instructorRepository: IInstructorRepository
   ) {}
 
   async generateRefreshToken(refreshToken: string) {
@@ -29,10 +50,10 @@ export class AuthUseCase {
   }
 
   async signupAndSendOtp(email: string) {
-    const existing = await this.studentRepo.findStudentByEmail(email);
+    const existing = await this._studentRepository.findStudentByEmail(email);
     if (existing) throw new Error(USER_ALREADY_EXISTS);
 
-    const lastOtp = await this.otpRepo.findOtp(email);
+    const lastOtp = await this._otpRepository.findOtp(email);
     if (lastOtp && Date.now() - lastOtp.createdAt.getTime() < 3000) {
       throw new Error(OTP_WAIT);
     }
@@ -40,15 +61,15 @@ export class AuthUseCase {
     const otp = generateOtp();
     console.log(otp);
     await sendOtpEmail(email, otp);
-    await this.otpRepo.createOtp(email, otp);
+    await this._otpRepository.createOtp(email, otp);
 
     return { message: OTP_SENT };
   }
 
   async SendOtp(email: string) {
-    const existing = await this.studentRepo.findStudentByEmail(email);
+    const existing = await this._studentRepository.findStudentByEmail(email);
     if (!existing) throw new Error(STUDENT_NOT_FOUND);
-    const lastOtp = await this.otpRepo.findOtp(email);
+    const lastOtp = await this._otpRepository.findOtp(email);
     if (lastOtp && Date.now() - lastOtp.createdAt.getTime() < 3000) {
       throw new Error(OTP_WAIT);
     }
@@ -56,17 +77,17 @@ export class AuthUseCase {
     const otp = generateOtp();
     console.log(otp);
     await sendOtpEmail(email, otp);
-    await this.otpRepo.createOtp(email, otp);
+    await this._otpRepository.createOtp(email, otp);
 
     return { message: OTP_SENT };
   }
 
   async resetPassword(email: string, password: string) {
-    const existing = await this.studentRepo.findStudentByEmail(email);
+    const existing = await this._studentRepository.findStudentByEmail(email);
     if (!existing) throw new Error(STUDENT_NOT_FOUND);
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const createdStudent = await this.studentRepo.updateById(
+    const createdStudent = await this._studentRepository.updateById(
       existing._id.toString(),
       { password: hashedPassword }
     );
@@ -84,13 +105,13 @@ export class AuthUseCase {
     otp: string,
     password: string
   ) {
-    const validOtp = await this.otpRepo.findOtp(email);
+    const validOtp = await this._otpRepository.findOtp(email);
     otp = otp.trim().toString();
     if (!validOtp || otp !== validOtp.otp) throw new Error(INVALID_OTP);
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const createdStudent = await this.studentRepo.create({
+    const createdStudent = await this._studentRepository.create({
       firstName,
       lastName,
       email,
@@ -98,7 +119,7 @@ export class AuthUseCase {
       isBlocked: false,
     });
 
-    await this.otpRepo.deleteOtp(email);
+    await this._otpRepository.deleteOtp(email);
 
     if (!createdStudent) {
       throw new Error(SIGNUP_FAILED);
@@ -107,15 +128,17 @@ export class AuthUseCase {
   }
 
   async verifyOtp(email: string, otp: string) {
-    const validOtp = await this.otpRepo.findOtp(email);
+    const validOtp = await this._otpRepository.findOtp(email);
     otp = otp.trim().toString();
     if (!validOtp || otp !== validOtp.otp) throw new Error(INVALID_OTP);
-    await this.otpRepo.deleteOtp(email);
+    await this._otpRepository.deleteOtp(email);
     return { message: VALID_OTP };
   }
 
   async loginStudent(email: string, password: string) {
-    const studentData = await this.studentRepo.findSafeStudentByEmail(email);
+    const studentData = await this._studentRepository.findSafeStudentByEmail(
+      email
+    );
     if (!studentData) {
       throw new Error(STUDENT_NOT_FOUND);
     }
@@ -144,12 +167,14 @@ export class AuthUseCase {
     authService: IGoogleAuthService,
     role: string
   ) {
-    console.log(role)
+    console.log(role);
     const googleUser = await authService.verifyToken(token);
     let TokenPayload: TokenPayload | undefined;
 
     if (role === "student") {
-      let student = await this.studentRepo.findStudentByEmail(googleUser.email);
+      let student = await this._studentRepository.findStudentByEmail(
+        googleUser.email
+      );
       if (!student) {
         const newStudent = new Student(
           googleUser.email,
@@ -164,7 +189,7 @@ export class AuthUseCase {
           googleUser.picture,
           new Date()
         );
-        student = await this.studentRepo.create(newStudent);
+        student = await this._studentRepository.create(newStudent);
       }
 
       if (student.isBlocked) {
@@ -177,7 +202,7 @@ export class AuthUseCase {
         role: "student",
       };
     } else if (role === "instructor") {
-      let instructor = await this.instructorRepo.findInstructorByEmail(
+      let instructor = await this._instructorRepository.findInstructorByEmail(
         googleUser.email
       );
       if (!instructor) {
@@ -194,9 +219,9 @@ export class AuthUseCase {
           ""
         );
         console.log(newInstructor);
-        instructor = await this.instructorRepo.create(newInstructor);
+        instructor = await this._instructorRepository.create(newInstructor);
       }
-      console.log(instructor)
+      console.log(instructor);
 
       if (instructor.isBlocked) {
         throw new Error(USER_BLOCKED);
@@ -219,4 +244,3 @@ export class AuthUseCase {
     return { message: LOGIN_SUCCESS, accessToken, refreshToken };
   }
 }
-  

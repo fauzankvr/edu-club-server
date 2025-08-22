@@ -82,6 +82,7 @@ export const FAILED_MESSAGE_CREATE = "Failed to create message"
 export const FAILED_FEATCH_MESSAGE = "Failed to fetch message";
 
 export const USER_NOT_FOUND = "User not found";
+export const INSTRUCTOR_NOT_FOUND = "Instructor not found";
 export const USER_ALREADY_EXISTS = "User already exists";
 export const OTP_WAIT = "Please wait before resending OTP";
 export const OTP_SENT = "OTP sent successfully";
@@ -97,9 +98,24 @@ export const USER_BLOCKED = "User is Blocked Please Contact to Admin";
 export const SIGNUP_FAILED = "Issue faced while saving student in DB";
 export const LOGIN_SUCCESS = "Login successful";
 export const PROFILE_UPDATE_FAILED = "Student updation failed";
+export const PROFILE_UPDATE_SUCCESS = "Profile updated successfully";
+export const PROFILE_UPDATED_FAILED = "Something went wrong while updating profile.";
 export const COURSE_NOT_FOUND = "Course not found";
+export const COURSE_UPDATE_SUCCESS = "Course updated successfully";
+export const FAILED_COURSE_UPDATE = "Failed to update course";
+
 export const ORDER_NOT_FOUND = "Order not found";
 export const CURRICULUM_NOT_FOUND = "Curriculum not found for this course";
+export const CURRICULUM_UPDATE_FAILED = "Curriculum update failed";
+export const CURRICULUM_UPDATE_SUCCESS = "Curriculum updated successfully";
+export const CURRICULUM_UPLOAD_SUCCESS = "Curriculum uploaded successfully";
+export const CURRICULUM_UPLOAD_FAILED = "Failed to upload curriculum";
+
+export const PROGRESS_UPDATE_SUCCESS = "Progress updated successfully";
+export const FAILED_PROGRESS_UPDATE = "Failed to update progress";
+export const PROGRESS_FETCH_SUCCESS = "Progress fetched successfully";
+export const FAILED_PROGRESS_FETCH = "Failed to fetch progress";
+
 export const REVIEW_NOT_FOUND = "Review not found";
 export const NO_REVIEWS_FOUND = "No reviews found for this course";
 export const REVIEW_ADD_FAILED = "Failed to add review";
@@ -111,6 +127,7 @@ export const FAILED_DISCUSSIONS_FETCH = "Failed to fetch discussions";
 export const NOTE_NOT_FOUND = "Note not found";
 export const INVALID_NOTE_INDEX = "Invalid note index";
 
+export const APPLICATION_SUCCESS_WAIT_FOR_UPPROVAL = "Application submitted successfully! Please wait for admin approval."
 export const SUCCESS_PROFILE_FETCH = "Profile fetched successfully";
 export const SUCCESS_COURSES_FETCH = "Courses fetched successfully";
 export const SUCCESS_COURSES_CREATE = "Courses created successfully";
@@ -176,11 +193,14 @@ export const FAILED_TOKEN_REFRESH = "Invalid or expired refresh token";
 export const FAILED_ORDER_CREATE = "Failed to create order";
 export const FAILED_ORDER_CAPTURE = "Failed to capture order";
 
+export const SOMETHING_WRONG = "Something went wrong";
+export const INTERNAL_SERVER_ERROR = "Internal server error";
 export const INVALID_TOKEN = "Invalid token payload: Email not found";
 export const UNAUTHORIZED = "Unauthorized";
 export const INVALID_TOKEN_PAYLOAD = "Unauthorized: No token provided";
 export const TOKEN_EXPIRED = "Unauthorized: Token expired";
 export const INVALID_CREDENTIALS = "Email and password are required";
+export const EMAIL_REQUIRE = "Email is Require"
 export const INVALID_GOOGLE_TOKEN = "Google token is missing";
 export const FAILED_GOOGLE_LOGIN = "Google login failed";
 export const INVALID_REACTION_TYPE = "Invalid reaction type";
@@ -225,3 +245,5 @@ export const FAILED_NOTIFICATION_CLEAR = "Failed to clear notifications.";
 
 export const SUCCESS_APPROVED_INSTRUCTOR = "Instructor approved successfully.";
 export const FAILED_APPROVED_INSTRUCTOR = "Failed to approve instructor.";
+
+export const PAYPAL_EMAIL_REQUIRE = "PayPal email is required";

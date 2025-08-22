@@ -1,16 +1,16 @@
 import { Model } from "mongoose";
 import { INotes } from "../database/models/NotesModel";
-import { INoteRepo } from "../../application/interface/INoteRepo";
+import { INoteRepository } from "../../application/interface/INoteRepository";
 
-export class NotesRepository implements INoteRepo {
-  constructor(private Notes:Model<INotes>) {}
+export class NotesRepository implements INoteRepository {
+  constructor(private _notes: Model<INotes>) {}
 
   async getNote(id: string, courseId: string): Promise<any> {
-    return await this.Notes.find({ student_id: id, course_id: courseId });
+    return await this._notes.find({ student_id: id, course_id: courseId });
   }
 
   async createNote(id: string, data: any): Promise<any> {
-    const notes = new this.Notes({
+    const notes = new this._notes({
       title: data.title,
       notes: data.notes,
       student_id: id,
@@ -24,7 +24,7 @@ export class NotesRepository implements INoteRepo {
     studentId: string,
     newNote: string
   ): Promise<any> {
-    return await this.Notes.findOneAndUpdate(
+    return await this._notes.findOneAndUpdate(
       { _id: id, student_id: studentId },
       { $push: { notes: newNote } },
       { new: true }
@@ -32,11 +32,11 @@ export class NotesRepository implements INoteRepo {
   }
 
   async deleteNotes(id: string, studentId: string): Promise<any> {
-    return await this.Notes.findOneAndDelete({ _id: id, student_id: studentId });
+    return await this._notes.findOneAndDelete({ _id: id, student_id: studentId });
   }
 
   async deleteNote(id: string, studentId: string, index: number): Promise<any> {
-    const noteDoc = await this.Notes.findOne({ _id: id, student_id: studentId });
+    const noteDoc = await this._notes.findOne({ _id: id, student_id: studentId });
     if (noteDoc?.notes && index >= 0 && index < noteDoc.notes.length) {
       noteDoc.notes.splice(index, 1);
       return await noteDoc.save();
@@ -50,7 +50,7 @@ export class NotesRepository implements INoteRepo {
     newNote: string,
     index: number
   ): Promise<any> {
-    const noteDoc = await this.Notes.findOne({ _id: id, student_id: studentId });
+    const noteDoc = await this._notes.findOne({ _id: id, student_id: studentId });
     if (noteDoc?.notes && index >= 0 && index < noteDoc.notes.length) {
       noteDoc.notes[index] = newNote;
       return await noteDoc.save();
@@ -58,7 +58,7 @@ export class NotesRepository implements INoteRepo {
     return null;
   }
 updateNoteTitle(id: string, studentId: string, title: string): Promise<any> {
-    return this.Notes.findOneAndUpdate(
+    return this._notes.findOneAndUpdate(
       { _id: id, student_id: studentId },
       { title: title },
       { new: true }

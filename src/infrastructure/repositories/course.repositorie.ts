@@ -1,19 +1,22 @@
 import mongoose, { Model } from "mongoose";
 import { ICourse } from "../database/models/CourseModel";
-import ICourseRepo from "../../application/interface/ICourseRepo";
+import ICourseRepo from "../../application/interface/ICourseRepository";
 import { CreateCourseDTO } from "../../application/interface/Dto/courseDto"; 
 import { LanguageModel } from "../database/models/LanguageModel";
 import { CategoryModel } from "../database/models/CategoryModel";
 
 export class CourseRepository implements ICourseRepo {
-  constructor(public CourseModal: Model<ICourse>) {}
+  constructor(private _courseModel: Model<ICourse>) {}
 
   async createCourse(courseData: CreateCourseDTO): Promise<ICourse> {
-    return await this.CourseModal.create(courseData);
+    return await this._courseModel.create(courseData);
+  }
+  getAdminCourseCount(): Promise<number> {
+    return this._courseModel.countDocuments();
   }
 
   async getCourseById(id: string): Promise<any> {
-    const course = await this.CourseModal.aggregate([
+    const course = await this._courseModel.aggregate([
       {
         $match: {
           _id: new mongoose.Types.ObjectId(id),
@@ -39,7 +42,7 @@ export class CourseRepository implements ICourseRepo {
   }
 
   async getBlockedCourseById(id: string): Promise<any> {
-    const course = await this.CourseModal.aggregate([
+    const course = await this._courseModel.aggregate([
       {
         $match: {
           _id: new mongoose.Types.ObjectId(id),
@@ -64,7 +67,7 @@ export class CourseRepository implements ICourseRepo {
   }
 
   async getAllInstructorCourses(email: string): Promise<ICourse[]> {
-    return await this.CourseModal.find({ instructor: email });
+    return await this._courseModel.find({ instructor: email });
   }
   async getFilterdCourses(
     search: string,
@@ -83,8 +86,8 @@ export class CourseRepository implements ICourseRepo {
     categories: string[];
   }> {
     const pipeline: any[] = [];
-
-    if (search?.trim()) {
+    
+    if (search?.trim()) { 
       const sanitizedSearch = search
         .trim()
         .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -148,9 +151,9 @@ export class CourseRepository implements ICourseRepo {
     });
 
     const totalPipeline = [...pipeline, { $count: "total" }];
-    const totalResult = await this.CourseModal.aggregate(totalPipeline);
+    const totalResult = await this._courseModel.aggregate(totalPipeline);
     const total = totalResult[0]?.total || 0;
-
+    //  pipeline.push({ $sort: { createdAt: -1 } });
     pipeline.push(
       {
         $lookup: {
@@ -207,8 +210,8 @@ export class CourseRepository implements ICourseRepo {
     }
 
     pipeline.push({ $skip: skip }, { $limit: limit });
-
-    const courses = await this.CourseModal.aggregate(pipeline);
+    
+    const courses = await this._courseModel.aggregate(pipeline);
     const languages = (
       await LanguageModel.find({ isBlocked: false }).select("name")
     ).map((lang) => lang.name) || [" "];
@@ -223,23 +226,23 @@ export class CourseRepository implements ICourseRepo {
     id: string,
     updateData: Partial<ICourse>
   ): Promise<ICourse | null> {
-    return await this.CourseModal.findByIdAndUpdate(
+    return await this._courseModel.findByIdAndUpdate(
       id,
       { $set: updateData },
       { new: true }
     );
   }
   async getAllCourses(email: string): Promise<ICourse[]> {
-    return await this.CourseModal.find({ instructor: email });
+    return await this._courseModel.find({ instructor: email });
   }
-  async getAdminAllCourses(): Promise<ICourse[]> {
-    return await this.CourseModal.find();
+  async getAdminAllCourses(limit: number, skip: number): Promise<ICourse[]> {
+    return await this._courseModel.find().limit(limit).skip(skip);
   }
   async findCourseByTitle(
     title: string,
     instructor: string
   ): Promise<ICourse | null> {
-    return await this.CourseModal.findOne({
+    return await this._courseModel.findOne({
       instructor: instructor,
       title: title,
     });

@@ -1,29 +1,31 @@
 import { Request, Response } from "express";
 import { IAuthenticatedRequest } from "../middlewares/ExtractInstructor";
-import { InstructorUseCase } from "../../application/useCase/instructor.usecase"; 
 import { generateAccessToken, TokenPayload, verifyRefreshToken } from "../../infrastructure/utility/GenarateToken";
 import { errorResponse, successResponse } from "../../infrastructure/utility/ResponseCreator";
 import { StatusCodes } from "../constants/statusCodes";
-import { FAILED_OTP_SENT, FAILED_RESET_PASSWORD, INVALID_TOKEN, NEWPASSWORD_MUST_DIFF, OTP_SENT, SUCCESS_RESET_PASSWORD, SUCCESS_SIGNUP } from "../constants/responseMessage";
+import { APPLICATION_SUCCESS_WAIT_FOR_UPPROVAL, EMAIL_REQUIRE, FAILED_OTP_SENT, FAILED_RESET_PASSWORD, INVALID_TOKEN, lOGOUT_FAILED, LOGOUT_SUCCESS, NEWPASSWORD_MUST_DIFF, NO_EMAIL_PASSWORD_ERROR, OTP_SENT, PAYPAL_EMAIL_REQUIRE, PROFILE_UPDATE_SUCCESS, PROFILE_UPDATED_FAILED, SOMETHING_WRONG, SUCCESS_RESET_PASSWORD, SUCCESS_SIGNUP, UNAUTHORIZED } from "../constants/responseMessage";
 import { IInstructor } from "../../infrastructure/database/models/InstructorModel";
 import { changePasswordSchema, instructorValidationSchema } from "../../infrastructure/utility/Instructor.validation";
 import z from "zod";
+import { IInstructorUseCase } from "../../application/interface/IInstructorUseCase";
 
 
 export class InstructorController {
-  constructor(private InstructorUseCase: InstructorUseCase) {}
+  constructor(private _instructorUseCase: IInstructorUseCase) {}
 
   getProfile = async (req: IAuthenticatedRequest, res: Response) => {
     try {
       const student = req.instructor;
 
       if (!student || typeof student === "string" || !("email" in student)) {
-        throw new Error("Invalid token payload: Email not found");
+        throw new Error(INVALID_TOKEN);
       }
-      const result = await this.InstructorUseCase.getProfile(student.email);
-      res.status(200).json({ profile: result });
+      const result = await this._instructorUseCase.getProfile(student.email);
+      res.status(StatusCodes.OK).json({ profile: result });
     } catch (error) {
-      res.status(500).json({ message: "Something went wrong" });
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json({ message: SOMETHING_WRONG });
     }
   };
   updateProfile = async (req: IAuthenticatedRequest, res: Response) => {
@@ -38,8 +40,8 @@ export class InstructorController {
         !("email" in instructor)
       ) {
         return res
-          .status(401)
-          .json({ success: false, error: "Invalid token. Email not found." });
+          .status(StatusCodes.UNAUTHORIZED)
+          .json({ success: false, error: INVALID_TOKEN });
       }
 
       // Parse JSON strings for arrays or nested objects
@@ -90,21 +92,21 @@ export class InstructorController {
       });
     }
 
-      const result = await this.InstructorUseCase.updateProfile(
+      const result = await this._instructorUseCase.updateProfile(
         instructor.email,
         updateData
       );
 
-      return res.status(200).json({
+      return res.status(StatusCodes.OK).json({
         success: true,
-        message: "Profile updated successfully.",
+        message: PROFILE_UPDATE_SUCCESS,
         result,
       });
     } catch (err: any) {
       console.error("Profile update error:", err);
-      return res.status(500).json({
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
         success: false,
-        error: err.message || "Something went wrong while updating profile.",
+        error: err.message || PROFILE_UPDATED_FAILED,
       });
     }
   };
@@ -112,13 +114,13 @@ export class InstructorController {
   generateRefreshToken = async (req: Request, res: Response) => {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return res.status(StatusCodes.UNAUTHORIZED).json({ message: UNAUTHORIZED });
     }
 
     try {
       const payload = verifyRefreshToken(refreshToken);
       if (!payload) {
-        return res.status(403).json({ message: "Invalid token" });
+        return res.status(StatusCodes.FORBIDDEN).json({ message: INVALID_TOKEN });
       }
       const TokenPayload: TokenPayload = {
         email: payload.email,
@@ -127,9 +129,9 @@ export class InstructorController {
       };
       const accessToken = generateAccessToken(TokenPayload);
 
-      res.status(200).json({ success: true, accessToken });
+      res.status(StatusCodes.OK).json({ success: true, accessToken });
     } catch (err: any) {
-      res.status(403).json({ message: "Invalid or expired refresh token" });
+      res.status(StatusCodes.FORBIDDEN).json({ message: INVALID_TOKEN });
     }
   };
 
@@ -137,13 +139,13 @@ export class InstructorController {
     const { email, password } = req.body;
     try {
       if (!email || !password) {
-        return res.status(400).json({
+        return res.status(StatusCodes.BAD_REQUEST).json({
           success: false,
-          message: "Email and password are required.",
+          message: NO_EMAIL_PASSWORD_ERROR,
         });
       }
 
-      const result = await this.InstructorUseCase.loginInstructor(
+      const result = await this._instructorUseCase.loginInstructor(
         email,
         password
       );
@@ -154,7 +156,7 @@ export class InstructorController {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      res.status(200).json({
+      res.status(StatusCodes.OK).json({
         success: true,
         accessToken: result.accessToken,
         message: result.message,
@@ -162,7 +164,7 @@ export class InstructorController {
     } catch (error: any) {
       console.log("Login error:", error);
       res
-        .status(401)
+        .status(StatusCodes.CREATED)
         .json({ success: false, message: error.message || "Login failed" });
     }
   };
@@ -210,26 +212,25 @@ export class InstructorController {
 
       const parsed = instructorValidationSchema.safeParse(applicationData);
       if (!parsed.success) {
-        return res.status(400).json({
+        return res.status(StatusCodes.BAD_REQUEST).json({
           success: false,
           error: parsed.error.issues.map((e) => e.message).join(", "),
         });
       }
 
       const validatedData = parsed.data;
-      const result = await this.InstructorUseCase.signupAndSendOtp(
+      const result = await this._instructorUseCase.signupAndSendOtp(
         validatedData
       );
 
-      res.status(200).json({
+      res.status(StatusCodes.OK).json({
         success: true,
         result,
-        message:
-          "Application submitted successfully! Please wait for admin approval.",
+        message: APPLICATION_SUCCESS_WAIT_FOR_UPPROVAL,
       });
     } catch (err: any) {
       console.error("Application submission error:", err);
-      res.status(400).json({ success: false, error: err.message });
+      res.status(StatusCodes.BAD_REQUEST).json({ success: false, error: err.message });
     }
   };
 
@@ -241,16 +242,16 @@ export class InstructorController {
         sameSite: "strict",
       });
 
-      res.status(200).json({ message: "Logged out successfully" });
+      res.status(StatusCodes.OK).json({ message: LOGOUT_SUCCESS});
     } catch (error) {
-      res.status(400).json({ message: "Logout failed", error });
+      res.status(StatusCodes.BAD_REQUEST).json({ message: lOGOUT_FAILED, error });
     }
   };
 
   async sendOtp(req: Request, res: Response): Promise<void> {
     try {
       const { email } = req.body;
-      const result = await this.InstructorUseCase.SendOtp(email);
+      const result = await this._instructorUseCase.SendOtp(email);
       res.status(StatusCodes.OK).json(successResponse(OTP_SENT, { result }));
     } catch (err: any) {
       res
@@ -261,7 +262,7 @@ export class InstructorController {
   async resetPassword(req: Request, res: Response): Promise<void> {
     try {
       const { email, newPassword } = req.body;
-      const result = await this.InstructorUseCase.resetPassword(
+      const result = await this._instructorUseCase.resetPassword(
         email,
         newPassword
       );
@@ -307,7 +308,7 @@ export class InstructorController {
         return;
       }
 
-      const result = await this.InstructorUseCase.changePassword(
+      const result = await this._instructorUseCase.changePassword(
         instructor.email,
         currentPassword,
         newPassword
@@ -335,31 +336,31 @@ export class InstructorController {
   verifyOtp = async (req: Request, res: Response) => {
     try {
       const { fullName, email, otp, password } = req.body;
-      const result = await this.InstructorUseCase.verifyOtpAndSignup(
+      const result = await this._instructorUseCase.verifyOtpAndSignup(
         fullName,
         email,
         otp,
         password
       );
 
-      res.status(200).json({
+      res.status(StatusCodes.OK).json({
         success: true,
         message: SUCCESS_SIGNUP,
       });
     } catch (err: any) {
-      res.status(401).json({ message: err.message, token: "" });
+      res.status(StatusCodes.UNAUTHORIZED).json({ message: err.message, token: "" });
     }
   };
   resendOtp = async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
       if (!email) {
-        return res.status(400).json({ error: "Email is required" });
+        return res.status(StatusCodes.BAD_REQUEST).json({ error: EMAIL_REQUIRE });
       }
-      const result = await this.InstructorUseCase.signupAndSendOtp(email);
+      const result = await this._instructorUseCase.signupAndSendOtp(email);
 
       res
-        .status(200)
+        .status(StatusCodes.OK)
         .json({ success: true, message: "OTP resent successfully", result });
     } catch (error: any) {
       console.error("Resend OTP error:", error);
@@ -383,18 +384,18 @@ export class InstructorController {
       if (!paypalEmail) {
         return res.status(400).json({
           success: false,
-          message: "PayPal email is required",
+          message: PAYPAL_EMAIL_REQUIRE,
         });
       }
-      const updated = await this.InstructorUseCase.updatePaypalEmail(
+      const updated = await this._instructorUseCase.updatePaypalEmail(
         email,
         paypalEmail
       );
-      res.status(200).json({ success: true, data: updated });
+      res.status(StatusCodes.OK).json({ success: true, data: updated });
     } catch (error) {
       console.log(error);
       res
-        .status(500)
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
         .json({ success: false, message: "Failed to update PayPal email" });
     }
   };

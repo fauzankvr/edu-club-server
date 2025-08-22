@@ -1,12 +1,13 @@
 import { Student } from "../../domain/entities/Student";
 import { IStudent } from "../../infrastructure/database/models/StudentModel";
-import { IBaseRepo } from "./IBaseRepo";
+import { IBaseRepo } from "./IBaseRepository";
 
-interface IStudentRepo extends IBaseRepo<IStudent> {
+interface IStudentRepository extends IBaseRepo<IStudent> {
   findStudentByEmail(email: string): Promise<IStudent | null>;
   updateProfileByEmail(email: string, updateData: object): Promise<boolean>;
-  getAllStudents(): Promise<IStudent[]>;
+  getAllStudents(limit: number, skip: number): Promise<IStudent[]>;
+  countAllStudents(): Promise<number>;
   findSafeStudentByEmail(email: string): Promise<IStudent | null>;
 }
 
-export default IStudentRepo;
+export default IStudentRepository;

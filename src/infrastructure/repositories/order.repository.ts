@@ -1,20 +1,20 @@
 import mongoose, { Model } from "mongoose";
-import { IOrderRepo } from "../../application/interface/IOrderRepo";
+import { IOrderRepository } from "../../application/interface/IOrderRepository";
 import { IOrder } from "../database/models/OrderModel";
 import CourseModel from "../database/models/CourseModel";
 
-export class OrderRepository implements IOrderRepo {
+export class OrderRepository implements IOrderRepository {
   constructor(
-    private orderModel: Model<IOrder>,
-    private payoutModel: Model<any>
+    private _orderModel: Model<IOrder>,
+    private _payoutModel: Model<any>
   ) {}
 
   async getOrderById(paypalOrderId: string): Promise<any> {
-    return await this.orderModel.findOne({ paypalOrderId });
+    return await this._orderModel.findOne({ paypalOrderId });
   }
 
   async getOrdersByUserId(userId: string): Promise<IOrder[]> {
-    return await this.orderModel.aggregate([
+    return await this._orderModel.aggregate([
       { $match: { userId: userId } },
       {
         $addFields: {
@@ -39,7 +39,7 @@ export class OrderRepository implements IOrderRepo {
   }
 
   async findPaidCourses(id: string): Promise<any> {
-    const courses = await this.orderModel.aggregate([
+    const courses = await this._orderModel.aggregate([
       {
         $match: {
           userId: id.trim(),
@@ -80,7 +80,7 @@ export class OrderRepository implements IOrderRepo {
   }
 
   async getTotalRevenue(instructorId: string): Promise<number> {
-    const result = await this.orderModel.aggregate([
+    const result = await this._orderModel.aggregate([
       {
         $match: {
           status: "PAID",
@@ -93,7 +93,7 @@ export class OrderRepository implements IOrderRepo {
   }
 
   async getTotalEnrollments(instructorId: string): Promise<number> {
-    return this.orderModel.countDocuments({
+    return this._orderModel.countDocuments({
       status: "PAID",
       courseId: { $in: await this.getInstructorCourseIds(instructorId) },
     });
@@ -126,7 +126,7 @@ export class OrderRepository implements IOrderRepo {
       }
     }
 
-    const result = await this.orderModel.aggregate([
+    const result = await this._orderModel.aggregate([
       { $match: matchStage },
       {
         $group: {
@@ -203,7 +203,7 @@ export class OrderRepository implements IOrderRepo {
   async getPayoutSummary(
     instructorId: string
   ): Promise<{ totalPayout: number; pendingPayout: number }> {
-    const result = await this.payoutModel.aggregate([
+    const result = await this._payoutModel.aggregate([
       { $match: { instructor: instructorId } },
       {
         $group: {
@@ -248,7 +248,7 @@ export class OrderRepository implements IOrderRepo {
       }
     }
 
-    const orders = await this.orderModel.aggregate([
+    const orders = await this._orderModel.aggregate([
       { $match: matchStage },
       {
         $lookup: {

@@ -1,21 +1,34 @@
 import z from "zod";
 import { Instructor } from "../../domain/entities/Instructor";
-import  { IInstructor } from "../../infrastructure/database/models/InstructorModel";
+import { IInstructor } from "../../infrastructure/database/models/InstructorModel";
 import { sendOtpEmail } from "../../infrastructure/services/EmailService";
-import { generateAccessToken, generateRefreshToken, TokenPayload, verifyRefreshToken } from "../../infrastructure/utility/GenarateToken";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  TokenPayload,
+  verifyRefreshToken,
+} from "../../infrastructure/utility/GenarateToken";
 import { generateOtp } from "../../infrastructure/utility/GenerateOtp";
-import { FAILED_RESET_PASSWORD, INVILED_CURR_PASSWORD, OTP_SENT, OTP_WAIT, SUCCESS_RESET_PASSWORD, USER_NOT_FOUND } from "../../interfaces/constants/responseMessage";
-import IInstructorRepo from "../interface/IInstructorRepo";
-import { IOtpRepo } from "../interface/IotpRepo";
+import {
+  FAILED_RESET_PASSWORD,
+  INVILED_CURR_PASSWORD,
+  OTP_SENT,
+  OTP_WAIT,
+  SUCCESS_RESET_PASSWORD,
+  USER_NOT_FOUND,
+} from "../../interfaces/constants/responseMessage";
+import { IOtpRepository } from "../interface/IotpRepository";
 import bcrypt from "bcrypt";
 
 import { instructorValidationSchema } from "../../infrastructure/utility/Instructor.validation";
+import { IInstructorUseCase } from "../interface/IInstructorUseCase";
+import IInstructorRepository from "../interface/IInstructorRepository";
 export type InstructorSignupDTO = z.infer<typeof instructorValidationSchema>;
 
-export class InstructorUseCase {
+export class InstructorUseCase implements IInstructorUseCase {
   constructor(
-    private instructorRepo: IInstructorRepo,
-    private otpRepo: IOtpRepo
+    private _instructorRepository: IInstructorRepository,
+    private _otpRepository: IOtpRepository
   ) {}
 
   async generateRefreshToken(refreshToken: string) {
@@ -31,10 +44,12 @@ export class InstructorUseCase {
 
   async signupAndSendOtp(applicationData: InstructorSignupDTO) {
     let email = applicationData.email;
-    const existing = await this.instructorRepo.findInstructorByEmail(email);
+    const existing = await this._instructorRepository.findInstructorByEmail(
+      email
+    );
     if (existing) throw new Error("User already exists");
 
-    const lastOtp = await this.otpRepo.findOtp(email);
+    const lastOtp = await this._otpRepository.findOtp(email);
     console.log(lastOtp);
     if (lastOtp && Date.now() - lastOtp.createdAt.getTime() < 3000) {
       throw new Error("Please wait before resending OTP");
@@ -43,23 +58,24 @@ export class InstructorUseCase {
     const otp = generateOtp();
     console.log(otp);
     await sendOtpEmail(email, otp);
-    await this.otpRepo.createOtp(email, otp);
-    
-   const instructorData: Partial<IInstructor> = {
-     ...applicationData,
-     phone: Number(applicationData.phone),
-   };
+    await this._otpRepository.createOtp(email, otp);
 
-   await this.instructorRepo.create(instructorData);
+    const instructorData: Partial<IInstructor> = {
+      ...applicationData,
+      phone: Number(applicationData.phone),
+    };
 
+    await this._instructorRepository.create(instructorData);
 
     return { message: "OTP sented successfully" };
   }
 
   async SendOtp(email: string) {
-    const existing = await this.instructorRepo.findSafeInstructorByEmail(email);
+    const existing = await this._instructorRepository.findSafeInstructorByEmail(
+      email
+    );
     if (!existing) throw new Error(USER_NOT_FOUND);
-    const lastOtp = await this.otpRepo.findOtp(email);
+    const lastOtp = await this._otpRepository.findOtp(email);
     if (lastOtp && Date.now() - lastOtp.createdAt.getTime() < 3000) {
       throw new Error(OTP_WAIT);
     }
@@ -67,17 +83,19 @@ export class InstructorUseCase {
     const otp = generateOtp();
     console.log(otp);
     await sendOtpEmail(email, otp);
-    await this.otpRepo.createOtp(email, otp);
+    await this._otpRepository.createOtp(email, otp);
 
     return { message: OTP_SENT };
   }
 
   async resetPassword(email: string, password: string) {
-    const existing = await this.instructorRepo.findSafeInstructorByEmail(email);
+    const existing = await this._instructorRepository.findSafeInstructorByEmail(
+      email
+    );
     if (!existing) throw new Error(USER_NOT_FOUND);
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const createdStudent = await this.instructorRepo.updateById(
+    const createdStudent = await this._instructorRepository.updateById(
       existing._id.toString(),
       { password: hashedPassword, isTempPassword: false }
     );
@@ -92,7 +110,9 @@ export class InstructorUseCase {
     currentPassword: string,
     password: string
   ) {
-    const existing = await this.instructorRepo.findSafeInstructorByEmail(email);
+    const existing = await this._instructorRepository.findSafeInstructorByEmail(
+      email
+    );
     if (!existing) throw new Error(USER_NOT_FOUND);
     if (existing.password) {
       const isMatch = await bcrypt.compare(currentPassword, existing.password);
@@ -100,7 +120,7 @@ export class InstructorUseCase {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const createdStudent = await this.instructorRepo.updateById(
+    const createdStudent = await this._instructorRepository.updateById(
       existing._id.toString(),
       { password: hashedPassword }
     );
@@ -116,8 +136,8 @@ export class InstructorUseCase {
     email: string,
     otp: string,
     password: string
-  ) {
-    const validOtp = await this.otpRepo.findOtp(email);
+  ): Promise<IInstructor | null> {
+    const validOtp = await this._otpRepository.findOtp(email);
     otp = otp.trim().toString();
 
     if (!validOtp || validOtp.otp !== otp) throw new Error("Invalid OTP");
@@ -133,20 +153,19 @@ export class InstructorUseCase {
     // const createdInstructor = await this.instructorRepo.createInstructor(
     //   newInstructor
     // );
-    const createdInstructor = await this.instructorRepo.updateProfileByEmail(
-      email,
-      { isEmailVerified: true }
-    );
+    const createdInstructor =
+      await this._instructorRepository.updateProfileByEmail(email, {
+        isEmailVerified: true,
+      });
 
-    await this.otpRepo.deleteOtp(email);
+    await this._otpRepository.deleteOtp(email);
 
     return createdInstructor;
   }
 
   async loginInstructor(email: string, password: string) {
-    const InstrucotrData = await this.instructorRepo.findSafeInstructorByEmail(
-      email
-    );
+    const InstrucotrData =
+      await this._instructorRepository.findSafeInstructorByEmail(email);
     if (!InstrucotrData) {
       throw new Error("Instructor not found");
     }
@@ -189,9 +208,8 @@ export class InstructorUseCase {
   }
 
   async getProfile(email: any): Promise<IInstructor> {
-    const instructorData = await this.instructorRepo.findInstructorByEmail(
-      email
-    );
+    const instructorData =
+      await this._instructorRepository.findInstructorByEmail(email);
     if (!instructorData) {
       throw new Error("Student not found");
     }
@@ -200,17 +218,18 @@ export class InstructorUseCase {
 
   async updateProfile(email: any, updateData: object) {
     console.log("update profiel usecase");
-    const instructorData = await this.instructorRepo.updateProfileByEmail(
-      email,
-      updateData
-    );
+    const instructorData =
+      await this._instructorRepository.updateProfileByEmail(email, updateData);
     if (!instructorData) {
       throw new Error("Student updation is Faild");
     }
     return instructorData;
   }
-  updatePaypalEmail(email: string, paypalEmail: string) {
-    const updated = this.instructorRepo.updateProfileByEmail(email, {
+  updatePaypalEmail(
+    email: string,
+    paypalEmail: string
+  ): Promise<IInstructor | null> {
+    const updated = this._instructorRepository.updateProfileByEmail(email, {
       paypalEmail,
     });
     if (!updated) {
@@ -218,4 +237,4 @@ export class InstructorUseCase {
     }
     return updated;
   }
-}  
+}

@@ -15,6 +15,7 @@ import rateLimit from "express-rate-limit";
 import path from "path";
 import { setupChatSocket } from "./infrastructure/services/chatSocket";
 import { setupVideoSocket } from "./infrastructure/services/videoSocket";
+import morgan from "morgan";
 
 dotenv.config();
 const app: Application = express();
@@ -63,6 +64,7 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
+app.use(morgan("dev"));
 
 //  Initialize socket
 setupChatSocket(io);

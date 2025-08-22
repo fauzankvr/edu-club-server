@@ -3,11 +3,11 @@ import { IAuthanticatedRequest } from "../middlewares/ExtractUser";
 import { StatusCodes } from "../constants/statusCodes";
 import { errorResponse, successResponse } from "../../infrastructure/utility/ResponseCreator";
 import { FAILED_NOTE_DELETE, FAILED_NOTE_UPDATE, FAILED_NOTES_CREATE, FAILED_NOTES_DELETE, FAILED_NOTES_FETCH, FAILED_NOTES_UPDATE, INVALID_TOKEN, SUCCESS_NOTE_DELETED, SUCCESS_NOTE_UPDATED, SUCCESS_NOTES_CREATED, SUCCESS_NOTES_DELETED, SUCCESS_NOTES_FETCH, SUCCESS_NOTES_UPDATED } from "../constants/responseMessage";
-import { NotesUseCase } from "../../application/useCase/notes.usecase";
+import { INotesUseCase } from "../../application/interface/INotesUseCase";
 
 // Notes Controller
 export class NotesController {
-  constructor(private notesUseCase: NotesUseCase) {}
+  constructor(private _notesUseCase: INotesUseCase) {}
 
   async getNotes(req: IAuthanticatedRequest, res: Response): Promise<void> {
     try {
@@ -15,7 +15,7 @@ export class NotesController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const notes = await this.notesUseCase.getNotes(
+      const notes = await this._notesUseCase.getNotes(
         student.email,
         req.params.id
       );
@@ -35,7 +35,7 @@ export class NotesController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const notes = await this.notesUseCase.createNotes(
+      const notes = await this._notesUseCase.createNotes(
         student.email,
         req.body
       );
@@ -55,7 +55,7 @@ export class NotesController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const notes = await this.notesUseCase.updateNotes(
+      const notes = await this._notesUseCase.updateNotes(
         student.email,
         req.params.id,
         req.body.note
@@ -76,7 +76,7 @@ export class NotesController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const notes = await this.notesUseCase.updateNoteTitle(
+      const notes = await this._notesUseCase.updateNoteTitle(
         student.email,
         req.params.id,
         req.body.title
@@ -97,7 +97,7 @@ export class NotesController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const notes = await this.notesUseCase.deleteNotes(
+      const notes = await this._notesUseCase.deleteNotes(
         student.email,
         req.params.id
       );
@@ -117,7 +117,7 @@ export class NotesController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const notes = await this.notesUseCase.updateNote(
+      const notes = await this._notesUseCase.updateNote(
         student.email,
         req.params.id,
         req.body.newText,
@@ -139,7 +139,7 @@ export class NotesController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const notes = await this.notesUseCase.deleteNote(
+      const notes = await this._notesUseCase.deleteNote(
         student.email,
         req.params.id,
         req.body.noteIndex
@@ -162,7 +162,7 @@ export class NotesController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const notes = await this.notesUseCase.updateNote(
+      const notes = await this._notesUseCase.updateNote(
         student.email,
         req.params.id,
         req.body.newText,

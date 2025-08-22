@@ -1,18 +1,18 @@
 import  { Model } from "mongoose";
 import  { IStudent } from "../database/models/StudentModel";
 import { BaseRepository } from "./base.repository"; 
-import IStudentRepo from "../../application/interface/IStudentRepo";
+import IStudentRepository from "../../application/interface/IStudentRepository";
 
 export class StudentRepository
   extends BaseRepository<IStudent>
-  implements IStudentRepo
+  implements IStudentRepository
 {
-  constructor(private studentModel: Model<IStudent>) {
-    super(studentModel);
+  constructor(private _studentModel: Model<IStudent>) {
+    super(_studentModel);
   }
 
   async findStudentByEmail(email: string): Promise<IStudent | null> {
-    return await this.studentModel
+    return await this._studentModel
       .findOne({ email })
       .select(
         "email isBlocked firstName lastName phone linkedInId githubId googleId profileImage createdAt updatedAt"
@@ -20,7 +20,7 @@ export class StudentRepository
   }
 
   async findSafeStudentByEmail(email: string): Promise<IStudent | null> {
-    return await this.studentModel
+    return await this._studentModel
       .findOne({ email })
       .select("email password isBlocked");
   }
@@ -29,7 +29,7 @@ export class StudentRepository
     email: string,
     updateData: object
   ): Promise<boolean> {
-    const updated = await this.studentModel.findOneAndUpdate(
+    const updated = await this._studentModel.findOneAndUpdate(
       { email },
       { $set: updateData },
       { new: true, projection: "-password" }
@@ -37,12 +37,15 @@ export class StudentRepository
     return !!updated;
   }
 
-  async getAllStudents(): Promise<IStudent[]> {
-    return await this.studentModel.find({});
+  async getAllStudents(limit:number,skip:number): Promise<IStudent[]> {
+    return await this._studentModel.find({}).limit(limit).skip(skip).sort({ createdAt: -1 });
+  }
+  countAllStudents(): Promise<number> {
+    return this._studentModel.countDocuments();
   }
 
   async blockStudent(email: string): Promise<boolean> {
-    const student = await this.studentModel.findOne({ email });
+    const student = await this._studentModel.findOne({ email });
     if (student) {
       student.isBlocked = !student.isBlocked;
       await student.save();

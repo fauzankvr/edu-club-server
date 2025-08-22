@@ -1,5 +1,5 @@
 import { Model } from "mongoose";
-import IAdminRepo from "../../application/interface/IAdminRepo";
+import IAdminRepo from "../../application/interface/IAdminRepository";
 import { IAdmin } from "../database/models/AdminModel";
 import PayoutRequestModel from "../database/models/Payout";
 import { IOrder } from "../database/models/OrderModel";
@@ -9,15 +9,15 @@ import { IInstructor } from "../database/models/InstructorModel";
 
 export class AdminRepository implements IAdminRepo {
   constructor(
-    private AdminModal: Model<IAdmin>,
-    private orderModel: Model<IOrder>,
-    private userModel: Model<IStudent>,
-    private courseModel: Model<ICourse>,
-    private instructorModel: Model<IInstructor>
+    private _adminModal: Model<IAdmin>,
+    private _orderModel: Model<IOrder>,
+    private _userModel: Model<IStudent>,
+    private _courseModel: Model<ICourse>,
+    private _instructorModel: Model<IInstructor>
   ) {}
 
   async findAdminByEmail(email: string): Promise<IAdmin | null> {
-    const admin = await this.AdminModal.findOne({ email });
+    const admin = await this._adminModal.findOne({ email });
     return admin;
   }
   async getPayouts(): Promise<any[]> {
@@ -69,7 +69,7 @@ export class AdminRepository implements IAdminRepo {
       }
     }
 
-    const result = await this.orderModel.aggregate([
+    const result = await this._orderModel.aggregate([
       { $match: matchStage },
       { $group: { _id: null, total: { $sum: "$priceUSD" } } },
     ]);
@@ -108,7 +108,7 @@ export class AdminRepository implements IAdminRepo {
         ? { $year: "$createdAt" }
         : { $month: "$createdAt" };
 
-    const result = await this.orderModel.aggregate([
+    const result = await this._orderModel.aggregate([
       { $match: matchStage },
       {
         $group: {
@@ -189,15 +189,15 @@ export class AdminRepository implements IAdminRepo {
   }
 
   async getTotalStudents(): Promise<number> {
-    return this.userModel.countDocuments();
+    return this._userModel.countDocuments();
   }
 
   async getTotalTeachers(): Promise<number> {
-    return this.instructorModel.countDocuments();
+    return this._instructorModel.countDocuments();
   }
 
   async getTotalCourses(): Promise<number> {
-    return this.courseModel.countDocuments();
+    return this._courseModel.countDocuments();
   }
 
   async getReportData(filter?: {
@@ -220,7 +220,7 @@ export class AdminRepository implements IAdminRepo {
       }
     }
 
-    const orders = await this.orderModel.aggregate([
+    const orders = await this._orderModel.aggregate([
       { $match: matchStage },
 
       // Group to calculate total revenue
@@ -343,7 +343,7 @@ export class AdminRepository implements IAdminRepo {
       };
     }
 
-    const result = await this.orderModel.aggregate([
+    const result = await this._orderModel.aggregate([
       { $match: match },
       {
         $lookup: {

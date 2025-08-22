@@ -2,7 +2,7 @@ import mongoose, { Model } from "mongoose";
 import { IReview } from "../database/models/ReviewModel";
 
 export class ReviewRepository {
-  constructor(private ReviewModel : Model<IReview>) {}
+  constructor(private _reviewModel : Model<IReview>) {}
 
   async addReview(
     userEmail: string,
@@ -11,7 +11,7 @@ export class ReviewRepository {
     rating: number,
     comment: string
   ): Promise<any> {
-    return await this.ReviewModel.create({
+    return await this._reviewModel.create({
       course: courseId,
       user: userEmail,
       name: userName,
@@ -21,7 +21,7 @@ export class ReviewRepository {
   }
 
   async getReviewsByCourseId(courseId: string): Promise<any> {
-    return await this.ReviewModel.aggregate([
+    return await this._reviewModel.aggregate([
       {
         $match: { course: new mongoose.Types.ObjectId(courseId) },
       },
@@ -57,7 +57,7 @@ export class ReviewRepository {
   }
 
   async getMyReviewsByCourseId(courseId: string, email: string): Promise<any> {
-    const review = await this.ReviewModel.aggregate([
+    const review = await this._reviewModel.aggregate([
       {
         $match: {
           course: new mongoose.Types.ObjectId(courseId),
@@ -94,7 +94,7 @@ export class ReviewRepository {
   }
 
   async findReviewById(reviewId: string): Promise<any> {
-    return await this.ReviewModel.findById(reviewId);
+    return await this._reviewModel.findById(reviewId);
   }
 
   async saveReview(review: any): Promise<any> {

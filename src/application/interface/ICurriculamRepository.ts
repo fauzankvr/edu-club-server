@@ -1,7 +1,7 @@
 import { ICurriculum } from "../../infrastructure/database/models/CarriculamModel";
 import { ISection } from "../../infrastructure/database/models/CarriculamModel"; 
 
-export default interface ICurriculumRepo {
+export default interface ICurriculumRepository {
   saveCurriculum(
     courseId: string,
     instructor: string,

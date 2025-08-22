@@ -1,15 +1,15 @@
 import { Model } from "mongoose";
 import { IWishlist } from "../database/models/WishlistModel";
-import { IWishlistRepo } from "../../application/interface/IWishlistRepo";
+import { IWishlistRepository } from "../../application/interface/IWishlistRepository";
 
-export class WishlistRepository implements IWishlistRepo {
-  constructor(private WishlistModel: Model<IWishlist>) {}
+export class WishlistRepository implements IWishlistRepository {
+  constructor(private _wishlistModel: Model<IWishlist>) {}
 
   async findWishlist(
     studentId: string,
     courseId: string
   ): Promise<IWishlist | null> {
-    return await this.WishlistModel.findOne({
+    return await this._wishlistModel.findOne({
       student: studentId,
       course: courseId,
     });
@@ -19,7 +19,7 @@ export class WishlistRepository implements IWishlistRepo {
     studentId: string,
     courseId: string
   ): Promise<IWishlist> {
-    return await this.WishlistModel.create({
+    return await this._wishlistModel.create({
       student: studentId,
       course: courseId,
     });
@@ -29,14 +29,14 @@ export class WishlistRepository implements IWishlistRepo {
     studentId: string,
     courseId: string
   ): Promise<IWishlist | null> {
-    return await this.WishlistModel.findOneAndDelete({
+    return await this._wishlistModel.findOneAndDelete({
       student: studentId,
       course: courseId,
     });
   }
 
   async getWishlist(studentEmail: string): Promise<IWishlist[]> {
-    return await this.WishlistModel.find({ student: studentEmail }).populate(
+    return await this._wishlistModel.find({ student: studentEmail }).populate(
       "course"
     );
   }

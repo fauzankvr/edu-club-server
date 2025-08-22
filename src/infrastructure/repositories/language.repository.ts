@@ -1,20 +1,28 @@
 import { Model } from "mongoose";
 import { UpdateCategoryDTO } from "../../application/interface/Dto/CatetoryDto";
 import { ILanguage } from "../database/models/LanguageModel"; 
-import { ILanguageRepo } from "../../application/interface/ILanguageRepository";
+import { ILanguageRepository } from "../../application/interface/ILanguageRepository";
 import { BaseRepository } from "./base.repository"; 
 
-export class LanguageRepository extends BaseRepository<ILanguage> implements ILanguageRepo {
-  constructor(private LanguageModal: Model<ILanguage>) {
-    super(LanguageModal)
+export class LanguageRepository extends BaseRepository<ILanguage> implements ILanguageRepository {
+  constructor(private _languageModal: Model<ILanguage>) {
+    super(_languageModal)
   }
    async update(id: string, data: UpdateCategoryDTO): Promise<ILanguage|null> {
-       return await this.LanguageModal.findByIdAndUpdate(id, data, {
+       return await this._languageModal.findByIdAndUpdate(id, data, {
          new: true,
        });
   }
   findNotBlocked(): Promise<ILanguage[]> {
-    return this.LanguageModal.find({ isBlocked: false });
+    return this._languageModal.find({ isBlocked: false });
   }
-    
+
+  findAllLanguages(limit: number, skip: number): Promise<ILanguage[]> {
+    return this._languageModal.find().limit(limit).skip(skip).sort({ createdAt: -1 });
+  }
+
+  countDocuments(): Promise<number> {
+    return this._languageModal.countDocuments();
+  }
+
 }

@@ -1,18 +1,18 @@
 import { Model } from "mongoose";
 import { Chat } from "../../domain/entities/Chat";
 import { IChat } from "../database/models/ChatModel";
-import { IChatRepo } from "../../application/interface/IChatRepo";
+import { IChatRepo } from "../../application/interface/IChatRepository";
 import Instructor from "../database/models/InstructorModel";
 import { IMessage } from "../database/models/MessageModel";
 
 export class ChatRepository implements IChatRepo {
   constructor(
-    private ChatModel: Model<IChat>,
-    private MessageModel: Model<IMessage>
+    private _chatModel: Model<IChat>,
+    private _messageModel: Model<IMessage>
   ) {}
 
   async getAllChats(id: string): Promise<any[]> {
-    const chats = await this.ChatModel.aggregate([
+    const chats = await this._chatModel.aggregate([
       { $match: { instructorId: id } },
       {
         $addFields: {
@@ -49,7 +49,7 @@ export class ChatRepository implements IChatRepo {
     // Compute unread count for each chat
     const chatsWithUnread = await Promise.all(
       chats.map(async (chat) => {
-        const unreadCount = await this.MessageModel.countDocuments({
+        const unreadCount = await this._messageModel.countDocuments({
           chatId: chat._id.toString(),
           seenBy: { $ne: id },
         });
@@ -64,17 +64,17 @@ export class ChatRepository implements IChatRepo {
     userId: string;
     instructorId: string;
   }): Promise<Chat> {
-    const chat = new this.ChatModel(data);
+    const chat = new this._chatModel(data);
     await chat.save();
     return chat.toObject();
   }
 
   async findChatById(id: string): Promise<Chat | null> {
-    return await this.ChatModel.findById(id).lean();
+    return await this._chatModel.findById(id).lean();
   }
 
   async findChatsByUserId(userId: string): Promise<any[]> {
-    const chats = await this.ChatModel.find({ userId }).lean();
+    const chats = await this._chatModel.find({ userId }).lean();
 
     const instructorIds = [...new Set(chats.map((chat) => chat.instructorId))];
 
@@ -93,7 +93,7 @@ export class ChatRepository implements IChatRepo {
   }
 
   async findChatsByInstructorId(instructorId: string): Promise<any[]> {
-    const chats = await this.ChatModel.find({ instructorId }).lean();
+    const chats = await this._chatModel.find({ instructorId }).lean();
     const instructor = await Instructor.findOne({
       _id: instructorId,
     }).lean();
@@ -105,7 +105,8 @@ export class ChatRepository implements IChatRepo {
   }
 
   async updateChat(id: string, data: Partial<Chat>): Promise<Chat> {
-    const chat = await this.ChatModel.findByIdAndUpdate(id, data, {
+    const chat = await this._chatModel
+    .findByIdAndUpdate(id, data, {
       new: true,
     }).lean();
     return chat as Chat;

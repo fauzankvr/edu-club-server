@@ -1,6 +1,6 @@
 import { IDiscussion, IReply } from "./IDiscussion";
 
-export interface IDiscussionRepo{
+export interface IDiscussionRepository{
     createDiscussion(
         paypalOrderId: string,
         data: Partial<IDiscussion>

@@ -1,24 +1,28 @@
 import { IDiscussion, IReply } from "../interface/IDiscussion";
-import { IDiscussionRepo } from "../interface/IDiscussionRepo";
+import { IDiscussionRepository } from "../interface/IDiscussionRepository";
+import { IDiscussionUseCase } from "../interface/IDiscussionUseCase";
 
 
-export class DiscussionUseCase {
-  constructor(private discussionRepo:IDiscussionRepo) {}
+export class DiscussionUseCase implements IDiscussionUseCase {
+  constructor(private _discussionRepository: IDiscussionRepository) {}
   async createDiscussion(id: string, data: Partial<IDiscussion>) {
-    return await this.discussionRepo.createDiscussion(id, data);
+    return await this._discussionRepository.createDiscussion(id, data);
   }
 
   async getAllDiscussions(orderId: string): Promise<IDiscussion[]> {
     try {
-      return await this.discussionRepo.getAllDiscussions(orderId);
+      return await this._discussionRepository.getAllDiscussions(orderId);
     } catch (error) {
       console.error("Error in getAllDiscussions:", error);
       throw new Error("Failed to fetch discussions");
     }
   }
-  async createReact(id: string, type: "like" | "dislike") {
-      const discussion = await this.discussionRepo.findByIdDiscussion(id);
-      if(!discussion) throw new Error("disscussion not found")
+  async createReact(
+    id: string,
+    type: "like" | "dislike"
+  ): Promise<IDiscussion | null> {
+    const discussion = await this._discussionRepository.findByIdDiscussion(id);
+    if (!discussion) throw new Error("disscussion not found");
     let usersId = discussion.studentId;
     let userId = usersId.toString();
     // Remove existing reaction
@@ -34,24 +38,24 @@ export class DiscussionUseCase {
     discussion.likes = discussion.likedBy.length;
     discussion.dislikes = discussion.dislikedBy.length;
 
-    return await this.discussionRepo.updateReaction(id, discussion);
+    return await this._discussionRepository.updateReaction(id, discussion);
   }
 
   async addReply(
     discussionId: string,
     reply: IReply
   ): Promise<IDiscussion | null> {
-    const discussion = await this.discussionRepo.findByIdDiscussion(
+    const discussion = await this._discussionRepository.findByIdDiscussion(
       discussionId
     );
     if (!discussion) throw new Error("Discussion not found");
-    console.log(discussionId)
+    console.log(discussionId);
     discussion.replies.push(reply);
-    return await this.discussionRepo.updateReplay(discussionId, discussion);
+    return await this._discussionRepository.updateReplay(discussionId, discussion);
   }
 
-  async getReplay(discussionId: string) {
-    const discussion = await this.discussionRepo.findReplayById(discussionId);
+  async getReplay(discussionId: string): Promise<IReply[]> {
+    const discussion = await this._discussionRepository.findReplayById(discussionId);
 
     if (!discussion) {
       throw new Error("Discussion not found");

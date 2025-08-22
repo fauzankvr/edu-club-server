@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { NotificationUseCase } from "../../application/useCase/notificaion.usecase"; 
 import { IAuthanticatedRequest } from "../middlewares/ExtractUser";
 import {
   FAILED_NOTIFICATION_CREATE,
@@ -18,13 +17,14 @@ import {
   successResponse,
   errorResponse,
 } from "../../infrastructure/utility/ResponseCreator";
-import { StudentUseCase } from "../../application/useCase/student.usecase";
 import { IAuthenticatedRequest } from "../middlewares/ExtractInstructor";
+import { INotificationUseCase } from "../../application/interface/INotificationUseCase";
+import { IStudentUseCase } from "../../application/interface/IStudentUseCase";
 
 export class NotificationController {
   constructor(
-    private notificationUseCase: NotificationUseCase,
-    private studentUseCase: StudentUseCase
+    private _notificationUseCase: INotificationUseCase,
+    private studentUseCase: IStudentUseCase
   ) {}
 
   async getAllNotification(
@@ -45,7 +45,7 @@ export class NotificationController {
         throw new Error("Invalid token payload: Email not found");
       }
 
-      const notifications = await this.notificationUseCase.getAllNotification(
+      const notifications = await this._notificationUseCase.getAllNotification(
         instructorId
       );
 
@@ -81,7 +81,7 @@ export class NotificationController {
       }
 
       const createdNotification =
-        await this.notificationUseCase.createNotification({
+        await this._notificationUseCase.createNotification({
           type,
           title,
           message,
@@ -110,7 +110,7 @@ export class NotificationController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const notifications = await this.notificationUseCase.getNotifications(
+      const notifications = await this._notificationUseCase.getNotifications(
         student.id.toString()
       );
       res
@@ -136,7 +136,7 @@ export class NotificationController {
       if (!data || !data.type || !data.title || !data.message) {
         throw new Error(STUDENT_DATA_NOT_FOUND);
       }
-      const notifications = await this.notificationUseCase.createNotification({
+      const notifications = await this._notificationUseCase.createNotification({
         studentId: student.id.toString(),
         type: data.type,
         title: data.title,
@@ -162,7 +162,7 @@ export class NotificationController {
         throw new Error(INVALID_TOKEN);
       }
 
-      const updated = await this.notificationUseCase.markAsRead(
+      const updated = await this._notificationUseCase.markAsRead(
         notificationId,
         student.email
       );
@@ -186,7 +186,7 @@ export class NotificationController {
         throw new Error(INVALID_TOKEN);
       }
 
-      const cleared = await this.notificationUseCase.clearNotifications(
+      const cleared = await this._notificationUseCase.clearNotifications(
         student.id
       );
       res

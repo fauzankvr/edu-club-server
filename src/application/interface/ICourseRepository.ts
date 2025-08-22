@@ -3,13 +3,13 @@ import { ICourse } from "../../infrastructure/database/models/CourseModel";
 import { CreateCourseDTO } from "./Dto/courseDto"; 
 
 export interface FilteredCoursesResult {
-  courses: Course[]; // make sure you have a Course interface defined
+  courses: ICourse[]; // make sure you have a Course interface defined
   total: number;
   languages: string[];
   categories: string[];
 }
 
-export default interface ICourseRepo {
+export default interface ICourseRepository {
   createCourse(courseData: CreateCourseDTO): Promise<ICourse>;
   findCourseByTitle(
     title: string,
@@ -35,5 +35,6 @@ export default interface ICourseRepo {
     priceMax?: string
   ): Promise<FilteredCoursesResult>;
   getAllCourses(email: string): Promise<ICourse[]>;
-  getAdminAllCourses(): Promise<ICourse[]>;
+  getAdminAllCourses(limit: number, skip: number): Promise<ICourse[]>;
+  getAdminCourseCount(): Promise<number>;
 }

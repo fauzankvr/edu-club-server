@@ -4,13 +4,14 @@ import { IAuthanticatedRequest } from "../middlewares/ExtractUser";
 import { FAILED_MY_REVIEW_FETCH, FAILED_REVIEW_ADD, FAILED_REVIEW_FETCH, FAILED_REVIEW_REACTION, INVALID_REACTION_TYPE, INVALID_TOKEN, STUDENT_DATA_NOT_FOUND, SUCCESS_MY_REVIEW_FETCH, SUCCESS_REVIEW_ADD, SUCCESS_REVIEW_FETCH, SUCCESS_REVIEW_REACTION } from "../constants/responseMessage";
 import { StatusCodes } from "../constants/statusCodes";
 import { errorResponse, successResponse } from "../../infrastructure/utility/ResponseCreator";
-import { StudentUseCase } from "../../application/useCase/student.usecase";
+import { IStudentUseCase } from "../../application/interface/IStudentUseCase";
+import { IReviewUseCase } from "../../application/interface/IRevewUseCase";
 
 // Review Controller
 export class ReviewController {
   constructor(
-    private reviewUseCase: ReviewUseCase,
-    private studentUseCase: StudentUseCase
+    private _reviewUseCase: IReviewUseCase,
+    private _studentUseCase: IStudentUseCase
   ) {}
 
   async addReview(req: IAuthanticatedRequest, res: Response): Promise<void> {
@@ -21,11 +22,11 @@ export class ReviewController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const studentData = await this.studentUseCase.getProfile(student.email);
+      const studentData = await this._studentUseCase.getProfile(student.email);
       if (!studentData.email || !studentData.firstName) {
         throw new Error(STUDENT_DATA_NOT_FOUND);
       }
-      const newReview = await this.reviewUseCase.addReview(
+      const newReview = await this._reviewUseCase.addReview(
         studentData.email,
         studentData.firstName,
         courseId,
@@ -45,7 +46,7 @@ export class ReviewController {
   async getReview(req: Request, res: Response): Promise<void> {
     try {
       const { courseId } = req.params;
-      const reviews = await this.reviewUseCase.getReview(courseId);
+      const reviews = await this._reviewUseCase.getReview(courseId);
       res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_REVIEW_FETCH, { reviews }));
@@ -70,7 +71,7 @@ export class ReviewController {
           .json(errorResponse(INVALID_REACTION_TYPE));
         return;
       }
-      const reviews = await this.reviewUseCase.handleReviewReaction(
+      const reviews = await this._reviewUseCase.handleReviewReaction(
         reviewId,
         student.email,
         type
@@ -92,7 +93,7 @@ export class ReviewController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const myReview = await this.reviewUseCase.getMyReview(
+      const myReview = await this._reviewUseCase.getMyReview(
         courseId,
         student.email
       );

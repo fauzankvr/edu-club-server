@@ -1,6 +1,6 @@
 import { INotification } from "../../infrastructure/database/models/NotificationModel";
 
-export interface INotificationRepo {
+export interface INotificationRepository {
   createNotification(data: {
     title: string;
     message: string;

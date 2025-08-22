@@ -7,7 +7,7 @@ import TransactionModel from "../database/models/Transaction";
 const clientId = process.env.PAYPAL_CLIENT_ID!;
 const clientSecret = process.env.PAYPAL_CLIENT_SECRET!;
 const isLive = process.env.PAYPAL_ENV === "live";
-const isTestMode = process.env.PAYPAL_TEST_MODE === "true"; // ✅ Read test mode from env
+const isTestMode = process.env.PAYPAL_TEST_MODE === "true"; // Use test mode for mock payouts
 
 const environment = isLive
   ? new paypal.core.LiveEnvironment(clientId, clientSecret)

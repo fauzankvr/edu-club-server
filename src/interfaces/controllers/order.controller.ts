@@ -1,20 +1,20 @@
 import { Request, Response } from "express";
 import { IAuthanticatedRequest } from "../middlewares/ExtractUser";
-import { StudentUseCase } from "../../application/useCase/student.usecase";
 import { FAILED_ORDER_CAPTURE, FAILED_ORDER_CREATE, FAILED_ORDER_FETCH, INVALID_TOKEN, SUCCESS_ORDER_CAPTURED, SUCCESS_ORDER_CREATED, SUCCESS_ORDERS_FETCHED } from "../constants/responseMessage";
 import { StatusCodes } from "../constants/statusCodes";
 import { captureOrderService, createOrderService } from "../../infrastructure/services/PaypalIntigrataion";
 import { errorResponse, successResponse } from "../../infrastructure/utility/ResponseCreator";
 import { IAuthenticatedRequest } from "../middlewares/ExtractInstructor";
-import { OrderUseCase } from "../../application/useCase/order.usecase";
-import { InstructorUseCase } from "../../application/useCase/instructor.usecase";
+import { IStudentUseCase } from "../../application/interface/IStudentUseCase";
+import { IOrderUseCase } from "../../application/interface/IOrderUseCase";
+import { IInstructorUseCase } from "../../application/interface/IInstructorUseCase";
 
 
 export class OrderController {
   constructor(
-    private studentUseCase: StudentUseCase,
-    private orderUseCase: OrderUseCase,
-    private instructoruUseCase: InstructorUseCase
+    private _studentUseCase: IStudentUseCase,
+    private _orderUseCase: IOrderUseCase,
+    private _instructorUseCase: IInstructorUseCase
   ) {}
 
   async createOrder(req: IAuthanticatedRequest, res: Response): Promise<void> {
@@ -41,7 +41,7 @@ export class OrderController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const orders = await this.orderUseCase.getOrders(student.id);
+      const orders = await this._orderUseCase.getOrders(student.id);
       res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_ORDERS_FETCHED, { purchases: orders }));
@@ -88,7 +88,7 @@ export class OrderController {
 
       const email = instructor.email; // ✅ Safe to access now
 
-      const pendingPayments = await this.orderUseCase.getPendingPayment(email);
+      const pendingPayments = await this._orderUseCase.getPendingPayment(email);
       res.status(200).json({ success: true, data: pendingPayments });
     } catch (error) {
       console.log(error);
@@ -112,7 +112,7 @@ export class OrderController {
 
       const instructorMail = instructor.email;
 
-      const instructordata = await this.instructoruUseCase.getProfile(
+      const instructordata = await this._instructorUseCase.getProfile(
         instructorMail
       );
       if (!instructordata || !instructordata.paypalEmail) {
@@ -123,7 +123,7 @@ export class OrderController {
       }
 
       const paypalEmail = instructordata.paypalEmail;
-      const payoutData = await this.orderUseCase.requestPayout(
+      const payoutData = await this._orderUseCase.requestPayout(
         instructorMail,
         paypalEmail
       );
@@ -159,7 +159,7 @@ export class OrderController {
         };
       }
 
-      const data = await this.orderUseCase.getDashboardData(
+      const data = await this._orderUseCase.getDashboardData(
         instructoremail,
         filter
       );

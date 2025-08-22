@@ -1,9 +1,9 @@
 import { Model, Types } from "mongoose";
 import { INotification } from "../database/models/NotificationModel";
-import { INotificationRepo } from "../../application/interface/INotificationRepo";
+import { INotificationRepository } from "../../application/interface/INotificationRepository";
 
-export class NotificationRepository implements INotificationRepo {
-  constructor(private NotificationModel: Model<INotification>) {}
+export class NotificationRepository implements INotificationRepository {
+  constructor(private _notificationModel: Model<INotification>) {}
 
   async createNotification(data: {
     title: string;
@@ -12,7 +12,7 @@ export class NotificationRepository implements INotificationRepo {
     studentId: string;
     instructorId: string;
   }): Promise<INotification> {
-    return await this.NotificationModel.create({
+    return await this._notificationModel.create({
       title: data.title,
       message: data.message,
       type: data.type,
@@ -24,7 +24,7 @@ export class NotificationRepository implements INotificationRepo {
   }
 
   async getNotificationsByUserId(userId: string): Promise<INotification[]> {
-    return await this.NotificationModel.find({
+    return await this._notificationModel.find({
       studentId: new Types.ObjectId(userId),
     }).sort({ createdAt: -1 });
   }
@@ -32,7 +32,7 @@ export class NotificationRepository implements INotificationRepo {
   async markNotificationAsRead(
     notificationId: string
   ): Promise<INotification | null> {
-    return await this.NotificationModel.findByIdAndUpdate(
+    return await this._notificationModel.findByIdAndUpdate(
       notificationId,
       { read: true },
       { new: true }
@@ -42,13 +42,14 @@ export class NotificationRepository implements INotificationRepo {
   async clearAllNotifications(
     studentId: string
   ): Promise<{ deletedCount?: number }> {
-    return await this.NotificationModel.deleteMany({
+    return await this._notificationModel.deleteMany({
       studentId: new Types.ObjectId(studentId),
     });
   }
 
   async getAllNotification(instructorId:string): Promise<INotification[]> {
-    return await this.NotificationModel.find({
+    return await this._notificationModel
+      .find({
       instructorId: new Types.ObjectId(instructorId),
     }).sort({ createdAt: -1 });
   }

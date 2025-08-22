@@ -1,12 +1,15 @@
-import IStudentRepo from "../interface/IStudentRepo";
-import { IWishlistRepo } from "../interface/IWishlistRepo";
+import IStudentRepository from "../interface/IStudentRepository";
+import { IStudentUseCase } from "../interface/IStudentUseCase";
+import { IWishlistRepository } from "../interface/IWishlistRepository";
 
-
-export class StudentUseCase {
-  constructor(private studentRepo: IStudentRepo,private wishlistRepo: IWishlistRepo) {}
+export class StudentUseCase implements IStudentUseCase {
+  constructor(
+    private _studentRepository: IStudentRepository,
+    private _wishlistRepository: IWishlistRepository
+  ) {}
 
   async getProfile(email: any) {
-      const studentData = await this.studentRepo.findStudentByEmail(email);
+    const studentData = await this._studentRepository.findStudentByEmail(email);
     if (!studentData) {
       throw new Error("Student not found");
     }
@@ -14,8 +17,7 @@ export class StudentUseCase {
   }
 
   async updateProfile(email: any, updateData: object) {
-    console.log("update profiel usecase");
-    const studentData = await this.studentRepo.updateProfileByEmail(
+    const studentData = await this._studentRepository.updateProfileByEmail(
       email,
       updateData
     );
@@ -26,16 +28,18 @@ export class StudentUseCase {
   }
 
   async findWishlist(studentId: string, courseId: string) {
-    return this.wishlistRepo.findWishlist(studentId, courseId);
+    return this._wishlistRepository.findWishlist(studentId, courseId);
   }
   async addWishlist(studentId: string, courseId: string) {
-    return this.wishlistRepo.addCourseToWishlist(studentId, courseId);
+    return this._wishlistRepository.addCourseToWishlist(studentId, courseId);
   }
   async removeWishlist(studentId: string, courseId: string) {
-    return this.wishlistRepo.removeCourseFromWishlist(studentId, courseId);
+    return this._wishlistRepository.removeCourseFromWishlist(
+      studentId,
+      courseId
+    );
   }
   async getWishlist(studentEmail: string) {
-    return this.wishlistRepo.getWishlist(studentEmail);
-    }
-    
+    return this._wishlistRepository.getWishlist(studentEmail);
+  }
 }

@@ -1,7 +1,7 @@
 import { ICourse } from "../../infrastructure/database/models/CourseModel";
 import { IOrder } from "../../infrastructure/database/models/OrderModel";
 
-export interface IOrderRepo {
+export interface IOrderRepository {
   getOrderById(paypalOrderId: string): Promise<IOrder | null>;
   getOrdersByUserId(userId:string):Promise<IOrder[]>
   findPaidCourses(id: string): Promise<

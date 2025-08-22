@@ -9,6 +9,7 @@ import {
   FAILED_PAYOUT_UPDATE,
   INSTRUCTORS_FETCH_FAILE,
   INSTRUCTORS_FETCH_SUCCESS,
+  INTERNAL_SERVER_ERROR,
   LOGIN_FAILED,
   lOGOUT_FAILED,
   LOGOUT_SUCCESS,
@@ -26,9 +27,10 @@ import {
   errorResponse,
   successResponse,
 } from "../../infrastructure/utility/ResponseCreator";
+import { IAdminUseCase } from "../../application/interface/IAdminUseCase";
 
 class AdminController {
-  constructor(private AdminUseCase: AdminUseCase) {}
+  constructor(private _adminUseCase: IAdminUseCase) {}
 
   loginAdmin = async (req: Request, res: Response) => {
     const { email, password } = req.body;
@@ -40,7 +42,7 @@ class AdminController {
           .json(errorResponse(NO_EMAIL_PASSWORD_ERROR));
       }
 
-      const result = await this.AdminUseCase.loginAdmin(email, password);
+      const result = await this._adminUseCase.loginAdmin(email, password);
 
       res.cookie("refreshToken", result.refreshToken, {
         sameSite: "strict",
@@ -65,11 +67,17 @@ class AdminController {
 
   findAllStudent = async (req: Request, res: Response) => {
     try {
-      const studentData = await this.AdminUseCase.findAllStudents();
+      const limit = parseInt(req.query.limit as string) || 10;
+      const page = parseInt(req.query.page as string) || 1;
+      const skip = (page - 1) * limit;
+      const studentData = await this._adminUseCase.findAllStudents(limit, skip);
+      const total = await this._adminUseCase.countAllStudents();
+      const totalPages = Math.ceil(total / limit);
+
       return res
         .status(StatusCodes.OK)
         .json(
-          successResponse(STUDENTS_FETCH_SUCCESS, { studentsData: studentData })
+          successResponse(STUDENTS_FETCH_SUCCESS, { studentsData: studentData, totalPages })
         );
     } catch (error: unknown) {
       return res
@@ -84,7 +92,7 @@ class AdminController {
 
   findAllTeachers = async (req: Request, res: Response) => {
     try {
-      const teacherData = await this.AdminUseCase.findAllTeachers();
+      const teacherData = await this._adminUseCase.findAllTeachers();
       return res
         .status(StatusCodes.OK)
         .json(successResponse(INSTRUCTORS_FETCH_SUCCESS, teacherData));
@@ -102,7 +110,7 @@ class AdminController {
   blockInstructor = async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
-      await this.AdminUseCase.blockTeacher(email);
+      await this._adminUseCase.blockTeacher(email);
       return res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_BLOCKD_INSTUCTOR));
@@ -119,7 +127,7 @@ class AdminController {
   approveInstructor = async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
-      await this.AdminUseCase.approveTeacher(email); // changed method name
+      await this._adminUseCase.approveTeacher(email);
 
       return res
         .status(StatusCodes.OK)
@@ -138,7 +146,7 @@ class AdminController {
   blockStudent = async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
-      await this.AdminUseCase.blockStudent(email);
+      await this._adminUseCase.blockStudent(email);
       return res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_BLOCKD_STUDENT));
@@ -172,7 +180,7 @@ class AdminController {
 
   getPayouts = async (req: Request, res: Response) => {
     try {
-      const payouts = await this.AdminUseCase.getPayouts();
+      const payouts = await this._adminUseCase.getPayouts();
       return res
         .status(StatusCodes.OK)
         .json(successResponse(PAYOUT_FETCH_SUCCESS, payouts));
@@ -218,10 +226,12 @@ class AdminController {
           endDate: endDate ? new Date(endDate as string) : undefined,
         };
       }
-      const data = await this.AdminUseCase.getDashboardData(filter);
+      const data = await this._adminUseCase.getDashboardData(filter);
       res.json(data);
     } catch (error) {
-      res.status(500).json({ error: "Internal server error" });
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json({ error: INTERNAL_SERVER_ERROR });
     }
   }
 
@@ -240,7 +250,7 @@ class AdminController {
         };
       }
       const { data, contentType, filename } =
-        await this.AdminUseCase.getReportData(
+        await this._adminUseCase.getReportData(
           format as "pdf" | "excel",
           filter
         );
@@ -249,7 +259,9 @@ class AdminController {
       res.send(data);
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: "Internal server error" });
+      res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .json({ error: INTERNAL_SERVER_ERROR });
     }
   }
 }

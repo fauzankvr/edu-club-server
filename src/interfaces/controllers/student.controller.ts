@@ -1,15 +1,15 @@
 import { Request, Response } from "express";
 import { IAuthanticatedRequest } from "../middlewares/ExtractUser";
 import { generateAccessToken, verifyRefreshToken } from "../../infrastructure/utility/GenarateToken";
-import { StudentUseCase } from "../../application/useCase/student.usecase"; 
 import { GoogleAuthServiceImpl } from "../../infrastructure/services/googleAuthServiceImpl";
 import { ALREADY_IN_WISHLIST, FAILED_WISHLIST_ADD, FAILED_WISHLIST_FETCH, FAILED_WISHLIST_REMOVE, INVALID_TOKEN, SUCCESS_WISHLIST_ADD, SUCCESS_WISHLIST_FETCH, SUCCESS_WISHLIST_REMOVE } from "../constants/responseMessage";
 import { errorResponse, successResponse } from "../../infrastructure/utility/ResponseCreator";
 import { StatusCodes } from "../constants/statusCodes";
+import { IStudentUseCase } from "../../application/interface/IStudentUseCase";
 
 
 export class StudentController {
-  constructor(private StudentUseCase: StudentUseCase) {}
+  constructor(private _studentUseCase: IStudentUseCase) {}
 
   getProfile = async (req: IAuthanticatedRequest, res: Response) => {
     try {
@@ -20,7 +20,7 @@ export class StudentController {
       }
 
       console.log("My email:", student.email);
-      const result = await this.StudentUseCase.getProfile(student.email);
+      const result = await this._studentUseCase.getProfile(student.email);
       res.status(200).json({ profile: result });
     } catch (error) {
       console.log(error);
@@ -42,7 +42,7 @@ export class StudentController {
       }
 
       console.log("My email:", student.email);
-      const result = this.StudentUseCase.updateProfile(
+      const result = this._studentUseCase.updateProfile(
         student.email,
         updateData
       );
@@ -69,7 +69,7 @@ export class StudentController {
           .json({ success: false, message: "Unauthorized" });
       }
 
-      const student = await this.StudentUseCase.getProfile(studentEmail.email);
+      const student = await this._studentUseCase.getProfile(studentEmail.email);
       if (!student) {
         return res
           .status(404)
@@ -93,14 +93,14 @@ export class StudentController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const isAdded = await this.StudentUseCase.findWishlist(
+      const isAdded = await this._studentUseCase.findWishlist(
         student.email,
         courseId
       );
       if (isAdded) {
         throw new Error(ALREADY_IN_WISHLIST);
       }
-      const result = await this.StudentUseCase.addWishlist(
+      const result = await this._studentUseCase.addWishlist(
         student.email,
         courseId
       );
@@ -124,7 +124,7 @@ export class StudentController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const result = await this.StudentUseCase.removeWishlist(
+      const result = await this._studentUseCase.removeWishlist(
         student.email,
         courseId
       );
@@ -144,7 +144,7 @@ export class StudentController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const wishlist = await this.StudentUseCase.getWishlist(student.email);
+      const wishlist = await this._studentUseCase.getWishlist(student.email);
       res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_WISHLIST_FETCH, { wishlist }));

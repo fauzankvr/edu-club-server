@@ -1,5 +1,5 @@
 
-export interface IReviewRepo {
+export interface IReviewRepository {
   addReview(
     userEmail: string,
     userName: string,

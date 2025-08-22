@@ -4,19 +4,20 @@ import { FAILED_GOOGLE_LOGIN, FAILED_LOGIN, FAILED_LOGOUT, FAILED_SIGNUP, FAILED
 import { errorResponse, successResponse } from "../../infrastructure/utility/ResponseCreator";
 import { generateAccessToken, verifyRefreshToken } from "../../infrastructure/utility/GenarateToken";
 import { GoogleAuthServiceImpl } from "../../infrastructure/services/googleAuthServiceImpl";
-import { StudentUseCase } from "../../application/useCase/student.usecase"; 
-import { AuthUseCase } from "../../application/useCase/auth.usecase";
 import { studentSchema } from "../../infrastructure/utility/student.validation";
+import { IAuthUseCase } from "../../application/interface/IAuthUseCase";
+import { IStudentUseCase } from "../../application/interface/IStudentUseCase";
 
 
 class AuthController {
   constructor(
-    private studentUseCase: StudentUseCase,
-    private authUseCase: AuthUseCase
+    private _studentUseCase: IStudentUseCase,
+    private _authUseCase: IAuthUseCase
   ) {}
 
   async generateRefreshToken(req: Request, res: Response): Promise<void> {
     const refreshToken = req.cookies.refreshToken;
+    console.log("refresh", refreshToken);
     if (!refreshToken) {
       res.status(StatusCodes.UNAUTHORIZED).json(errorResponse(UNAUTHORIZED));
       return;
@@ -51,7 +52,7 @@ class AuthController {
         return;
       }
 
-      const result = await this.authUseCase.loginStudent(email, password);
+      const result = await this._authUseCase.loginStudent(email, password);
       res.cookie("refreshToken", result.refreshToken, {
         sameSite: "strict",
         httpOnly: true,
@@ -82,7 +83,7 @@ class AuthController {
     const authService = new GoogleAuthServiceImpl();
     try {
       const { message, accessToken, refreshToken } =
-        await this.authUseCase.googleLoginUseCase(token, authService,role);
+        await this._authUseCase.googleLoginUseCase(token, authService, role);
       res
         .status(StatusCodes.OK)
         .json(successResponse(message, { accessToken, refreshToken }));
@@ -97,7 +98,7 @@ class AuthController {
   async signupStudent(req: Request, res: Response): Promise<void> {
     try {
       const { email } = req.body;
-      const result = await this.authUseCase.signupAndSendOtp(email);
+      const result = await this._authUseCase.signupAndSendOtp(email);
       res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_SIGNUP, { result }));
@@ -112,7 +113,7 @@ class AuthController {
   async resendOtp(req: Request, res: Response): Promise<void> {
     try {
       const { email } = req.body;
-      const result = await this.authUseCase.signupAndSendOtp(email);
+      const result = await this._authUseCase.signupAndSendOtp(email);
       res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_SIGNUP, { result }));
@@ -125,7 +126,7 @@ class AuthController {
   async sendOtp(req: Request, res: Response): Promise<void> {
     try {
       const { email } = req.body;
-      const result = await this.authUseCase.SendOtp(email);
+      const result = await this._authUseCase.SendOtp(email);
       res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_SIGNUP, { result }));
@@ -139,7 +140,7 @@ class AuthController {
   async resetPassword(req: Request, res: Response): Promise<void> {
     try {
       const { email , newPassword } = req.body;
-      const result = await this.authUseCase.resetPassword(email, newPassword);
+      const result = await this._authUseCase.resetPassword(email, newPassword);
       res
         .status(StatusCodes.OK)
         .json(successResponse(SUCCESS_SIGNUP, { result }));
@@ -163,7 +164,7 @@ class AuthController {
         });
        return
      }
-      const result = await this.authUseCase.verifyOtpAndSignup(
+      const result = await this._authUseCase.verifyOtpAndSignup(
         firstName,
         lastName,
         email,
@@ -182,7 +183,7 @@ class AuthController {
   async forgotVerifyOtp(req: Request, res: Response): Promise<void> {
     try {
       const { email, otp } = req.body;
-      const result = await this.authUseCase.verifyOtp(email, otp);
+      const result = await this._authUseCase.verifyOtp(email, otp);
 
       res.status(StatusCodes.OK).json(successResponse(SUCCESS_SIGNUP));
     } catch (err: any) {
