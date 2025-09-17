@@ -139,7 +139,7 @@ export class NotesController {
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }
-      const notes = await this._notesUseCase.deleteNote(
+      const notes = await this._notesUseCase.removeNote(
         student.email,
         req.params.id,
         req.body.noteIndex

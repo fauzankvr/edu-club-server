@@ -19,7 +19,6 @@ export class StudentController {
         throw new Error("Invalid token payload: Email not found");
       }
 
-      console.log("My email:", student.email);
       const result = await this._studentUseCase.getProfile(student.email);
       res.status(200).json({ profile: result });
     } catch (error) {
@@ -41,7 +40,6 @@ export class StudentController {
         throw new Error("Invalid token payload: Email not found");
       }
 
-      console.log("My email:", student.email);
       const result = this._studentUseCase.updateProfile(
         student.email,
         updateData
@@ -141,6 +139,7 @@ export class StudentController {
   async getWishlist(req: IAuthanticatedRequest, res: Response): Promise<void> {
     try {
       const student = req.student;
+      console.log(student);
       if (!student || typeof student === "string" || !("email" in student)) {
         throw new Error(INVALID_TOKEN);
       }

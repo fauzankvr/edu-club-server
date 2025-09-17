@@ -4,8 +4,6 @@ import dotenv from "dotenv";
 import connectDB from "./infrastructure/config/db";
 import studentRoutes from "./interfaces/routes/student.routes";
 import InstructorRoutes from "./interfaces/routes/instructou.routes";
-import LanguageRoutes from "./interfaces/routes/admin.language.routes";
-import CategoryRoutes from "./interfaces/routes/admin.category.routes";
 import AdminRoutes from "./interfaces/routes/admin.routes";
 import cookieParser from "cookie-parser";
 import http from "http";
@@ -72,8 +70,6 @@ setupVideoSocket(io);
 
 //  Routes
 app.use("/instructor", InstructorRoutes);
-app.use("/admin/language", LanguageRoutes);
-app.use("/admin/category", CategoryRoutes);
 app.use("/admin", AdminRoutes);
 app.use("/", studentRoutes);
 

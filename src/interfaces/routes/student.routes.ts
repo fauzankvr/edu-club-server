@@ -78,7 +78,7 @@ router.get("/student/profile", verifyStudent, async (req, res) => {
 });
 
 //course
-router.get("/student/getAllCourses", async (req, res) => {
+router.get("/student/courses", async (req, res) => {
   await courseController.getAllCourses(req, res);
 });
 
@@ -97,19 +97,19 @@ router.get("/student/getCurriculum/:courseId", async (req, res) => {
   await courseController.getCurriculum(req, res);
 });
 
-router.get("/student/getAllProgress", verifyStudent, async (req, res) => {
+router.get("/student/progress", verifyStudent, async (req, res) => {
   await courseController.getAllProgress(req, res);
 });
 
-router.get("/student/getProgress/:studentId/:courseId", async (req, res) => {
+router.get("/student/progress/:studentId/:courseId", async (req, res) => {
   await courseController.getLessonProgress(req, res);
 });
 
-router.patch("/student/updateProgress", async (req, res) => {
+router.patch("/student/progress", async (req, res) => {
   await courseController.updateLessonProgress(req, res);
 });
 
-router.get("/student/course/fullcourse/:orderId", async (req, res) => {
+router.get("/student/course/:orderId", async (req, res) => {
   await courseController.getFullCourse(req, res);
 });
 
@@ -169,7 +169,7 @@ router.delete(
   }
 );
 
-router.get("/student/course/wishlist", verifyStudent, async (req, res) => {
+router.get("/student/wishlist", verifyStudent, async (req, res) => {
   await studentController.getWishlist(req, res);
 });
 

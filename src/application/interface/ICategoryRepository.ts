@@ -1,12 +1,12 @@
-import { ICategory } from "../../infrastructure/database/models/CategoryModel";
+import { CategoryEntity } from "../../domain/entities/Category";
 import { UpdateCategoryDTO } from "./Dto/CatetoryDto";
 import { IBaseRepo } from "./IBaseRepository";
 
 
-export interface ICategoryRepository extends IBaseRepo<ICategory> {
-  findAllCategories(limit: number, skip: number): Promise<ICategory[]>;
-  update(id: string, data: UpdateCategoryDTO): Promise<ICategory | null>;
-  findNotBlocked(): Promise<ICategory[]>
-  findByName(name: string): Promise<ICategory | null>
+export interface ICategoryRepository extends IBaseRepo<CategoryEntity> {
+  find(limit: number, skip: number): Promise<CategoryEntity[]>;
+  update(id: string, data: UpdateCategoryDTO): Promise<CategoryEntity | null>;
+  findNotBlocked(): Promise<CategoryEntity[]>;
+  findByName(name: string): Promise<CategoryEntity | null>;
   count(): Promise<number>;
 }

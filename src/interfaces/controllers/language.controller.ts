@@ -39,6 +39,12 @@ class LanguageController {
 
   async getAllLanguages(req: Request, res: Response) {
     try {
+      if (req.params.status == "true") {
+        const result = await this._languageUseCase.getNotBlockedLanguages();
+        return res
+          .status(StatusCodes.OK)
+          .json(successResponse(LANGUAGE_FETCH_SUCCESS, result));
+      }
       const limit = parseInt(req.query.limit as string) || 10;
       const skip = parseInt(req.query.skip as string) || 0;
       const result = await this._languageUseCase.getAllLanguages(limit, skip);
@@ -46,7 +52,7 @@ class LanguageController {
       const totalPages = Math.ceil(total / limit);
       return res
         .status(StatusCodes.OK)
-        .json(successResponse(LANGUAGE_FETCH_SUCCESS,{result, totalPages }));
+        .json(successResponse(LANGUAGE_FETCH_SUCCESS, { result, totalPages }));
     } catch (error: unknown) {
       return res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)

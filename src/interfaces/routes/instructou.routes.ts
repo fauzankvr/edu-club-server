@@ -2,9 +2,11 @@ import express from "express";
 import { verifyInstructor } from "../middlewares/ExtractInstructor";
 import { upload } from "../../infrastructure/services/multer/multerConfig";
 import {
+  categoryController,
   chatController,
   courseController,
   instructorController,
+  languageController,
   notificationController,
   orderController,
 } from "./Dependencyinjector";
@@ -97,15 +99,22 @@ router.put(
     courseController.updateCurriculum(req, res);
   }
 );
-router.post("/updateCourse/:id", upload.single("courseImgeId"), (req, res) => {
+router.post("/update/:id", upload.single("courseImgeId"), (req, res) => {
   courseController.updateCourse(req, res);
+});
+
+router.get("/category", (req, res) => {
+  categoryController.getNotBlockedCategories(req, res);
+});
+router.get("/language", (req, res) => {
+  languageController.getNotBlockedLanguages(req, res);
 });
 
 router.get("/getAllCourses", verifyInstructor, (req, res) => {
   courseController.getInstructorAllCourses(req, res);
 });
 
-router.get("/getAllChats", verifyInstructor, (req, res) => {
+router.get("/chats", verifyInstructor, (req, res) => {
   chatController.getAllChats(req, res);
 });
 router.get("/getMessages/:id", verifyInstructor, (req, res) => {
@@ -115,7 +124,7 @@ router.get("/getMessages/:id", verifyInstructor, (req, res) => {
 router.post("/postMessage", verifyInstructor, (req, res) => {
   chatController.postMessage(req, res);
 });
-router.get("/getCallhistory/:instructorId", verifyInstructor, (req, res) => {
+router.get("/callhistory/:instructorId", verifyInstructor, (req, res) => {
   chatController.getCallHistory(req, res);
 });
 

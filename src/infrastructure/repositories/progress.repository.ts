@@ -4,140 +4,102 @@ import { BaseRepository } from "./base.repository";
 import { IProgressRepository } from "../../application/interface/IProgressRepository";
 import { ICurriculum } from "../database/models/CarriculamModel";
 import InstructorModal from "../database/models/InstructorModel";
+import { ProgressEntity } from "../../domain/entities/Progress";
+
+ const toEntity = function (progressDoc: IProgress): ProgressEntity {
+    return new ProgressEntity(
+      progressDoc._id.toString(),
+      progressDoc.studentId.toString(),
+      progressDoc.courseId.toString(),
+      progressDoc.sections.map((sec) => ({
+        sectionId: sec.sectionId.toString(),
+        lectures: sec.lectures.map((lec) => ({
+          lectureId: lec.lectureId.toString(),
+          progress: lec.progress,
+        })),
+        completed: sec.completed,
+      })),
+      progressDoc.completed,
+      progressDoc.createdAt,
+      progressDoc.updatedAt
+    );
+  }
 
 export class ProgressRepository
-  extends BaseRepository<IProgress>
+  extends BaseRepository<IProgress, ProgressEntity>
   implements IProgressRepository
 {
-  constructor(
-    private _progressModel: Model<IProgress>,
-    private _curriculumModel: Model<ICurriculum>
-  ) {
-    super(_progressModel);
+  constructor(private _progressModel: Model<IProgress>) {
+    super(_progressModel, toEntity);
   }
 
   async findByStudentAndCourse(
     studentId: string,
     courseId: string
-  ): Promise<IProgress> {
-    const studentObjectId = Types.ObjectId.isValid(studentId)
-      ? new Types.ObjectId(studentId)
-      : studentId;
-
-    const courseObjectId = Types.ObjectId.isValid(courseId)
-      ? new Types.ObjectId(courseId)
-      : courseId;
-
-    let progressDoc = await this._progressModel.findOne({
-      studentId: studentObjectId,
-      courseId: courseObjectId,
-    }).exec();
-    if (!progressDoc) {
-      const curriculum = await this._curriculumModel.findOne({
-        courseId: courseObjectId,
-      });
-      if (!curriculum) {
-        throw new Error(`Curriculum not found for course ID: ${courseId}`);
-      }
-
-      const sections = curriculum.sections.map((section) => ({
-        sectionId: section._id,
-        lectures: section.lectures.map((lecture) => ({
-          lectureId: lecture._id,
-          progress: "0",
-        })),
-        completed: false,
-      }));
-
-      progressDoc = new this._progressModel({
-        studentId: studentObjectId,
-        courseId: courseObjectId,
-        sections,
-        completed: false,
-      });
-
-      await progressDoc.save();
-    }
-
-    return progressDoc;
+  ): Promise<ProgressEntity | null> {
+    console.log("studentid", studentId,courseId);
+    const progressDoc = await this._progressModel.findOne({
+      studentId: new Types.ObjectId(courseId),
+      courseId: new Types.ObjectId(studentId),
+      
+    });
+    return progressDoc ? toEntity(progressDoc) : null;
   }
 
-  async createOrUpdateProgress(
-    studentId: string,
-    courseId: string,
-    sectionId: string,
-    lectureId: string,
-    progress: string
-  ): Promise<IProgress> {
-    if (!studentId || !courseId || !sectionId || !lectureId || !progress) {
-      throw new Error("Missing required parameters for progress update");
-    }
+  async saveProgress(progress: ProgressEntity): Promise<ProgressEntity> {
+    const doc = await this._progressModel
+      .findByIdAndUpdate(
+        progress.id,
+        {
+          studentId: progress.studentId,
+          courseId: progress.courseId,
+          sections: progress.sections,
+          completed: progress.completed,
+        },
+        { upsert: true, new: true }
+      )
+      .exec();
 
-    const progressDoc = await this.findByStudentAndCourse(studentId, courseId);
-
-    const section = progressDoc.sections.find((sec) =>
-      sec.sectionId.equals(sectionId)
-    );
-    if (!section) {
-      throw new Error(`Section not found for section ID: ${sectionId}`);
-    }
-
-    const lecture = section.lectures.find((lec) =>
-      lec.lectureId.equals(lectureId)
-    );
-    if (!lecture) {
-      throw new Error(`Lecture not found for lecture ID: ${lectureId}`);
-    }
-
-    lecture.progress = progress;
-
-    section.completed = section.lectures.every(
-      (lec) => parseInt(lec.progress) >= 95
-    );
-
-    progressDoc.completed = progressDoc.sections.every((sec) => sec.completed);
-
-    await progressDoc.save();
-    return progressDoc;
+    // if (!doc) throw new Error("Failed to save progress");
+    return toEntity(doc);
   }
 
-  async findAllByStudent(studentId: string): Promise<IProgress[]> {
-    if (!Types.ObjectId.isValid(studentId)) {
-      throw new Error("Invalid studentId provided");
-    }
-    return this._progressModel.find({ studentId }).exec();
+  async findAllByStudent(studentId: string): Promise<ProgressEntity[]> {
+    const docs = await this._progressModel
+      .find({
+        studentId: new Types.ObjectId(studentId),
+      })
+      .exec();
+    return docs.map((doc) => toEntity(doc));
   }
 
-  async findByStudentId(studentId: string): Promise<IProgress[] | null> {
-    const progresses = await this._progressModel.find({ studentId })
+  async findByStudentId(studentId: string): Promise<ProgressEntity[]> {
+    const docs = await this._progressModel
+      .find({ studentId })
       .populate({
         path: "courseId",
-        select: "title instructor",
         model: "Course",
-      })
-      .populate({
-        path: "studentId",
-        select: "firstName lastName email",
       })
       .lean();
 
-    for (const progress of progresses) {
-      const course = progress.courseId as any;
-      if (course && typeof course === "object" && "instructor" in course && course.instructor) {
-        const instructorData = await InstructorModal.findOne({
-          email: course.instructor,
-        }).select("email fullName");
-
-        course.instructor = instructorData
-          ? {
-              fullName: instructorData.fullName,
-              email: instructorData.email,
-            }
-          : { email: course.instructor };
-      }
-    }
-
-    return progresses;
+    return docs.map(
+      (doc: any) =>
+        new ProgressEntity(
+          doc._id.toString(),
+          doc.studentId.toString(),
+          doc.courseId,
+          doc.sections.map((sec: any) => ({
+            sectionId: sec.sectionId.toString(),
+            lectures: sec.lectures.map((lec: any) => ({
+              lectureId: lec.lectureId.toString(),
+              progress: lec.progress,
+            })),
+            completed: sec.completed,
+          })),
+          doc.completed,
+          doc.createdAt,
+          doc.updatedAt
+        )
+    );
   }
-  
 }

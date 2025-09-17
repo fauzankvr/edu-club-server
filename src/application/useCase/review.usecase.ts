@@ -1,3 +1,5 @@
+import { ReviewEntity } from "../../domain/entities/Riview";
+import { ReviewDto } from "../interface/Dto/ReviewDto";
 import { IReviewUseCase } from "../interface/IRevewUseCase";
 import { IReviewRepository } from "../interface/IReviewRepository";
 
@@ -10,48 +12,54 @@ export class ReviewUseCase implements IReviewUseCase {
     courseId: string,
     rating: number,
     comment: string
-  ) {
-    console.log("Adding review usecase...");
-    const newReview = await this._reviewRepository.addReview(
+  ): Promise<ReviewDto> {
+    const reviewEntity = new ReviewEntity(
+      "",
+      courseId,
       userEmail,
       userName,
-      courseId,
       rating,
-      comment
+      comment,
+      0,
+      0,
+      [],
+      [],
+      new Date()
     );
 
-    if (!newReview) {
-      throw new Error("Failed to add review");
-    }
-    return newReview;
+    const savedReview = await this._reviewRepository.addReview(reviewEntity);
+    if (!savedReview) throw new Error("Failed to add review");
+
+    return ReviewDto.fromEntity(savedReview);
   }
 
-  async getMyReview(courseId: string, studentEmail: string) {
-    const reviews = await this._reviewRepository.getMyReviewsByCourseId(
+  async getMyReview(
+    courseId: string,
+    studentEmail: string
+  ): Promise<ReviewDto> {
+    const review = await this._reviewRepository.getMyReviewsByCourseId(
       courseId,
       studentEmail
     );
 
-    if (!reviews) {
-      throw new Error("No reviews found for this course");
-    }
-    return reviews;
+    if (!review) throw new Error("No review found for this course");
+
+    return ReviewDto.fromEntity(review);
   }
 
-  async getReview(courseId: string) {
+  async getReview(courseId: string): Promise<ReviewDto[]> {
     const reviews = await this._reviewRepository.getReviewsByCourseId(courseId);
-
-    if (!reviews) {
+    if (!reviews || reviews.length === 0) {
       throw new Error("No reviews found for this course");
     }
-    return reviews;
+    return reviews.map((r) => ReviewDto.fromEntity(r));
   }
 
   async handleReviewReaction(
     reviewId: string,
     userEmail: string,
     type: "like" | "dislike"
-  ) {
+  ): Promise<ReviewDto> {
     const review = await this._reviewRepository.findReviewById(reviewId);
     if (!review) throw new Error("Review not found");
 
@@ -60,23 +68,28 @@ export class ReviewUseCase implements IReviewUseCase {
 
     if (type === "like") {
       if (liked) {
-        review.likedBy.pull(userEmail);
+        review.likedBy = review.likedBy.filter((u) => u !== userEmail);
       } else {
         review.likedBy.push(userEmail);
-        if (disliked) review.dislikedBy.pull(userEmail);
+        if (disliked) {
+          review.dislikedBy = review.dislikedBy.filter((u) => u !== userEmail);
+        }
       }
     } else if (type === "dislike") {
       if (disliked) {
-        review.dislikedBy.pull(userEmail);
+        review.dislikedBy = review.dislikedBy.filter((u) => u !== userEmail);
       } else {
         review.dislikedBy.push(userEmail);
-        if (liked) review.likedBy.pull(userEmail);
+        if (liked) {
+          review.likedBy = review.likedBy.filter((u) => u !== userEmail);
+        }
       }
     }
 
     review.likes = review.likedBy.length;
     review.dislikes = review.dislikedBy.length;
 
-    return await this._reviewRepository.saveReview(review);
+    const updatedReview = await this._reviewRepository.saveReview(review);
+    return ReviewDto.fromEntity(updatedReview);
   }
 }

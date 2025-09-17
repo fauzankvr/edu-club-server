@@ -1,8 +1,8 @@
-import { IPlan } from "../../infrastructure/database/models/PlanModels";
+import { PlanEntity } from "../../domain/entities/Plan";
 import { IBaseRepo } from "./IBaseRepository";
 
-export interface IPlanRepository extends IBaseRepo<IPlan> {
-  findNonBlocked(): Promise<IPlan[]>
+export interface IPlanRepository extends IBaseRepo<PlanEntity> {
+  findNonBlocked(): Promise<PlanEntity[]>;
   countDocuments(): Promise<number>;
-  findAllPlans(limit: number, skip: number): Promise<IPlan[]>;
+  list(limit: number, skip: number): Promise<PlanEntity[]>;
 }

@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IReview extends Document {
+  _id: mongoose.Types.ObjectId;
   course: mongoose.Types.ObjectId;
   user: string;
   name: string;

@@ -1,13 +1,15 @@
-import { ICurriculum } from "../../infrastructure/database/models/CarriculamModel";
+import { CurriculumEntity } from "../../domain/entities/Curriculam";
 import { ISection } from "../../infrastructure/database/models/CarriculamModel"; 
 
 export default interface ICurriculumRepository {
-  saveCurriculum(
+  save(
     courseId: string,
     instructor: string,
     sections: ISection[]
-  ): Promise<boolean>;
+  ): Promise<CurriculumEntity>;
 
-  getCurriculumByCourseId(courseId: string): Promise<ICurriculum | null>;
-  getCarriculamTopics(courseId: string): Promise<ICurriculum|null>;
+  findByCourseId(courseId: string): Promise<CurriculumEntity | null>;
+  findTopics(
+    courseId: string
+  ): Promise<Pick<CurriculumEntity, "sections"> | null>;
 }

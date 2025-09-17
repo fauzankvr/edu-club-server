@@ -1,6 +1,7 @@
 import mongoose, { Document,Schema} from "mongoose";
 
 export interface ILanguage extends Document{
+    _id:mongoose.Types.ObjectId,
     name: string,
     isBlocked:boolean
 }

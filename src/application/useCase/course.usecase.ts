@@ -1,9 +1,9 @@
-import { Course } from "../../domain/entities/Course";
+import { CourseEntity } from "../../domain/entities/Course";
 import { ICurriculum, ISection } from "../../infrastructure/database/models/CarriculamModel";
 import { ICourse } from "../../infrastructure/database/models/CourseModel";
 import { COURSE_NOT_FOUND, CURRICULUM_NOT_FOUND, ORDER_NOT_FOUND, STUDENT_NOT_FOUND } from "../../interfaces/constants/responseMessage";
 import { IOrderRepository } from "../interface/IOrderRepository";
-import { CreateCourseDTO } from "../interface/Dto/courseDto"; 
+import { CourseDto, CreateCourseDTO } from "../interface/Dto/courseDto"; 
 import { IProgressRepository } from "../interface/IProgressRepository";
 import { IProgress } from "../../infrastructure/database/models/ProgressModel";
 import { ICourseUseCase } from "../interface/ICourseUseCase";
@@ -11,6 +11,10 @@ import { IOrder } from "../../infrastructure/database/models/OrderModel";
 import IStudentRepository from "../interface/IStudentRepository";
 import ICourseRepository from "../interface/ICourseRepository";
 import ICurriculumRepository from "../interface/ICurriculamRepository";
+import { ProgressEntity } from "../../domain/entities/Progress";
+import { CurriculumDto } from "../interface/Dto/CurriculamDto";
+import { CurriculumTopicsDto } from "../interface/Dto/CurriculamTopic";
+import IInstructorRepository from "../interface/IInstructorRepository";
 
 
 export class CourseUseCase implements ICourseUseCase {
@@ -19,7 +23,7 @@ export class CourseUseCase implements ICourseUseCase {
     private _curriculumRepository: ICurriculumRepository,
     private _orderRepository: IOrderRepository,
     private _studentRepository: IStudentRepository,
-    private _progressRepository: IProgressRepository
+    private _progressRepository: IProgressRepository,
   ) {}
 
   async getFilterdCourses(
@@ -33,13 +37,13 @@ export class CourseUseCase implements ICourseUseCase {
     priceMin?: string,
     priceMax?: string
   ): Promise<{
-    courses: ICourse[];
+    courses: CourseDto[];
     total: number;
     languages: string[];
     categories: string[];
   }> {
     const { courses, total, languages, categories } =
-      await this._courseRepository.getFilterdCourses(
+      await this._courseRepository.filter(
         search,
         skip,
         limit,
@@ -50,11 +54,12 @@ export class CourseUseCase implements ICourseUseCase {
         priceMin,
         priceMax
       );
-    return { courses, total, languages, categories };
+    const coursesDto = courses.map((c) => CourseDto.fromEntity(c));
+    return { courses: coursesDto, total, languages, categories };
   }
 
-  async createNewCourse(data: CreateCourseDTO): Promise<ICourse> {
-    const course = new Course(
+  async createNewCourse(data: CreateCourseDTO): Promise<CourseDto> {
+    const course = new CourseEntity(
       data.title,
       data.description,
       data.language,
@@ -66,62 +71,64 @@ export class CourseUseCase implements ICourseUseCase {
       data.students,
       data.instructor
     );
-
-    if (!course.isValid()) throw new Error("Invalid course data");
-    const samecoure = await this._courseRepository.findCourseByTitle(
+    if (!course.instructor) {
+      throw new Error("Instructor is required");
+    }
+    const samecoure = await this._courseRepository.findByTitle(
       course.title,
       course.instructor
     );
-    console.log(samecoure);
     if (samecoure) {
       throw new Error(
         "Course with this title already exists for this instructor"
       );
     }
-    const res = await this._courseRepository.createCourse(course);
-    return res;
+    const res = await this._courseRepository.create(course);
+    const courseDto = CourseDto.fromEntity(res);
+    return courseDto;
   }
 
-  async getAllCourses(email: string) {
-    const courses = await this._courseRepository.getAllCourses(email);
+  async getAllCourses(email: string): Promise<CourseDto[]> {
+    const courses = await this._courseRepository.findAllByEmail(email);
 
     if (!courses) {
       throw new Error("Failed to retrieve courses");
     }
-
-    return courses;
+    const courseDto = courses.map((c) => CourseDto.fromEntity(c));
+    return courseDto;
   }
-  async getAdminAllCourses(limit: number, skip: number) {
-    const courses = await this._courseRepository.getAdminAllCourses(limit, skip);
+  async getAdminAllCourses(limit: number, skip: number): Promise<CourseDto[]> {
+    const courses = await this._courseRepository.findAllAdmin(limit, skip);
     if (!courses) {
       throw new Error("Failed to retrieve courses");
     }
-
-    return courses;
+    const courseDto = courses.map((c) => CourseDto.fromEntity(c));
+    return courseDto;
   }
   getAdminCourseCount(): Promise<number> {
-    return this._courseRepository.getAdminCourseCount();
+    return this._courseRepository.count();
   }
 
-  async getCourseById(id: string) {
-    const res = await this._courseRepository.getCourseById(id);
+  async getCourseById(id: string): Promise<CourseDto> {
+    const res = await this._courseRepository.findById(id);
     if (!res) {
       throw new Error("Faild to retrive course");
     }
-    return res;
+    const courseDto = CourseDto.fromEntity(res);
+    return courseDto;
   }
 
   async updateCourse(
     id: string,
-    updateData: Partial<ICourse>
-  ): Promise<ICourse> {
+    updateData: Partial<CourseDto>
+  ): Promise<CourseDto> {
     // ── 1. Make sure the course exists
-    const course = await this._courseRepository.getCourseById(id);
+    const course = await this._courseRepository.findById(id);
     if (!course) throw new Error("Course not found");
 
     // ── 2. If the title is changing, check for duplicates **for the same instructor**
     if (updateData.title && updateData.title !== course.title) {
-      const duplicate = await this._courseRepository.findCourseByTitle(
+      const duplicate = await this._courseRepository.findByTitle(
         updateData.title,
         course.instructor ?? ""
       );
@@ -132,22 +139,40 @@ export class CourseUseCase implements ICourseUseCase {
         );
       }
     }
+    if(!course.instructor||!course.instructor.email) throw new Error("Instructor is required");
+    const data = new CourseEntity(
+      updateData.title ?? course.title,
+      updateData.description ?? course.description,
+      updateData.language ?? course.language,
+      updateData.category ?? course.category,
+      updateData.courseImageId ?? course.courseImageId,
+      updateData.points ?? course.points,
+      updateData.price ?? course.price,
+      updateData.discount ?? course.discount,
+      updateData.students ?? course.students,
+      updateData.instructor ?? course.instructor?.email,
+      updateData.id ?? course.id
+    );
 
     // ── 3. Perform the update
-    const updated = await this._courseRepository.updateCourseById(id, updateData);
+    const updated = await this._courseRepository.update(id, data);
+    
     if (!updated) throw new Error("Failed to update course");
-
-    return updated;
+    const courseDto = CourseDto.fromEntity(updated);
+   
+    return courseDto;
   }
 
-  async getCurriculam(id: string): Promise<ICurriculum> {
-    const curriculum = await this._curriculumRepository.getCurriculumByCourseId(id);
+  async getCurriculam(id: string): Promise<CurriculumDto> {
+    const curriculum = await this._curriculumRepository.findByCourseId(id);
 
     if (!curriculum) {
       throw new Error("Failed to retrieve curriculum");
     }
 
-    return curriculum;
+    const curriculumDto = CurriculumDto.fromEntity(curriculum);
+
+    return curriculumDto;
   }
 
   async saveCurriculum(
@@ -178,7 +203,7 @@ export class CourseUseCase implements ICourseUseCase {
       });
 
       // Now call the CurriculumRepo to save it
-      await this._curriculumRepository.saveCurriculum(courseId, instructor, sections);
+      await this._curriculumRepository.save(courseId, instructor, sections);
 
       return true;
     } catch (error) {
@@ -187,132 +212,153 @@ export class CourseUseCase implements ICourseUseCase {
     }
   }
 
-  async toggleCourseBlock(id: string): Promise<ICourse | null> {
+  async toggleCourseBlock(id: string): Promise<CourseDto | null> {
     try {
-      const course = await this._courseRepository.getBlockedCourseById(id);
+      const course = await this._courseRepository.findBlockedById(id);
       if (!course) {
         throw new Error("Course not found");
       }
 
-      const updated = await this._courseRepository.updateCourseById(id, {
+      const updated = await this._courseRepository.update(id, {
         isBlocked: !course.isBlocked,
       });
 
-      return updated;
+      if (!updated) {
+        throw new Error("Failed to toggle course block status");
+      }
+
+      const courseDto = CourseDto.fromEntity(updated);
+
+      return courseDto;
     } catch (error) {
       console.error("Error toggling course block:", error);
       throw new Error("Failed to toggle course block status");
     }
   }
 
-  async getInstructorAllCourses(email: string) {
-    return this._courseRepository.getAllInstructorCourses(email);
+  async getInstructorAllCourses(email: string): Promise<CourseDto[]> {
+    const courses = await this._courseRepository.findByInstructor(email);
+    return courses.map((course) => CourseDto.fromEntity(course));
   }
 
-  async getCourseByOrderId(orderId: string) {
+  async getCourseByOrderId(orderId: string): Promise<CourseDto> {
     const order = await this._orderRepository.getOrderById(orderId);
     if (!order) {
       throw new Error(ORDER_NOT_FOUND);
     }
-    const course = await this._courseRepository.getCourseById(
+   
+    const course = await this._courseRepository.findById(
       order.courseId.toString()
     );
+
     if (!course) {
       throw new Error(COURSE_NOT_FOUND);
     }
-    return course;
+    const courseDto = CourseDto.fromEntity(course);
+    return courseDto;
   }
 
   async getCurriculum(id: string) {
-    const curriculum = await this._curriculumRepository.getCurriculumByCourseId(id);
+    const curriculum = await this._curriculumRepository.findByCourseId(id);
     if (!curriculum) {
       throw new Error(CURRICULUM_NOT_FOUND);
     }
     return curriculum;
   }
 
-  async getCurriculumTopics(courseId: string): Promise<ICurriculum> {
-    const curriculum = await this._curriculumRepository.getCarriculamTopics(
-      courseId
-    );
+  async getCurriculumTopics(courseId: string): Promise<CurriculumTopicsDto> {
+    const curriculum = await this._curriculumRepository.findTopics(courseId);
     if (!curriculum) {
       throw new Error(CURRICULUM_NOT_FOUND);
     }
-    return curriculum;
+    const curriculumDto = CurriculumTopicsDto.fromEntity(curriculum);
+    return curriculumDto;
   }
 
-  async getAllProgress(studentId: string): Promise<IProgress[] | null> {
-    try {
-      const progress = await this._progressRepository.findByStudentId(studentId);
-      if (!progress) {
-        return null;
-      }
-      return progress;
-    } catch (error) {
-      throw new Error(
-        `Failed to fetch progress: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-    }
+  async getAllProgress(studentId: string): Promise<ProgressEntity[] | null> {
+    return await this._progressRepository.findByStudentId(studentId);
   }
 
   async getLessonProgress(
-    courseId: string,
-    studentId: string
-  ): Promise<IProgress | null> {
-    try {
-      console.log(courseId, studentId);
-      const progress = await this._progressRepository.findByStudentAndCourse(
-        studentId,
+    studentId: string,
+    courseId: string
+  ): Promise<ProgressEntity> {
+    let progress = await this._progressRepository.findByStudentAndCourse(
+      studentId,
+      courseId
+    );
+    if (!progress) {
+      // Initialize from curriculum
+      const curriculum = await this._curriculumRepository.findByCourseId(
         courseId
       );
-      if (!progress) {
-        return null; // No progress found for this student and course
+      if (!curriculum) {
+        throw new Error(`Curriculum not found for course ID: ${courseId}`);
       }
-      return progress;
-    } catch (error) {
-      throw new Error(
-        `Failed to fetch progress: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+
+      progress = new ProgressEntity(
+        "",
+        studentId,
+        courseId,
+        curriculum.sections.map((section) => ({
+          sectionId: section.id,
+          lectures: section.lectures.map((lecture) => ({
+            lectureId: lecture.id,
+            progress: "0",
+          })),
+          completed: false,
+        })),
+        false
       );
+
+      progress = await this._progressRepository.saveProgress(progress);
     }
+
+    return progress;
   }
 
   async updateLessonProgress(
-    courseId: string,
     studentId: string,
+    courseId: string,
     sectionId: string,
     lectureId: string,
     progress: number
-  ): Promise<IProgress> {
-    try {
-      // Update progress using the repository
-      const progressDoc = await this._progressRepository.createOrUpdateProgress(
-        studentId,
-        courseId,
-        sectionId,
-        lectureId,
-        progress.toString()
-      );
+  ): Promise<ProgressEntity> {
+    let progressEntity = await this.getLessonProgress(studentId, courseId);
 
-      return progressDoc;
-    } catch (error) {
-      throw new Error(
-        `Failed to update progress: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-    }
+    // Business rule: update lecture
+    const section = progressEntity.sections.find(
+      (s) => s.sectionId === sectionId
+    );
+    if (!section) throw new Error(`Section not found: ${sectionId}`);
+
+    const lecture = section.lectures.find((l) => l.lectureId === lectureId);
+    if (!lecture) throw new Error(`Lecture not found: ${lectureId}`);
+
+    lecture.progress = progress.toString();
+
+    // Business rule: section completed if all lectures >= 95%
+    section.completed = section.lectures.every(
+      (lec) => parseInt(lec.progress) >= 95
+    );
+
+    // Business rule: course completed if all sections are complete
+    progressEntity.completed = progressEntity.sections.every(
+      (sec) => sec.completed
+    );
+
+    return await this._progressRepository.saveProgress(progressEntity);
   }
 
   async getEnrolledCourses(email: string): Promise<any> {
-    const student = await this._studentRepository.findSafeStudentByEmail(email);
+    const student = await this._studentRepository.findByEmail(email);
     if (!student) {
       throw new Error(STUDENT_NOT_FOUND);
     }
-    const studentId = student._id.toString();
+    const studentId = student.id;
+    if (!studentId) {
+      throw new Error(STUDENT_NOT_FOUND);
+    }
     const courses = await this._orderRepository.findPaidCourses(studentId);
     return courses;
   }

@@ -1,24 +1,30 @@
+import { OrderEntity } from "../../domain/entities/Order";
 import { ICourse } from "../../infrastructure/database/models/CourseModel";
-import { IOrder } from "../../infrastructure/database/models/OrderModel";
 
 export interface IOrderRepository {
-  getOrderById(paypalOrderId: string): Promise<IOrder | null>;
-  getOrdersByUserId(userId:string):Promise<IOrder[]>
+  getOrderById(paypalOrderId: string): Promise<OrderEntity | null>;
+  getOrdersByUserId(userId: string): Promise<OrderEntity[]>;
+
   findPaidCourses(id: string): Promise<
     Array<{
-      orderDetails: IOrder & { courseDetails?: never };
+      orderDetails: OrderEntity & { courseDetails?: never };
       courseDetails: ICourse | null;
     }>
   >;
 
-  getTotalRevenue(instructorId: string): Promise<number>;
+  getTotalRevenue(dateRange?: {
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<number>;
+
   getTotalEnrollments(instructorId: string): Promise<number>;
   getMonthlyRevenue(
     instructorId: string,
     filter: any
   ): Promise<{ name: string; uv: number }[]>;
-  getPayoutSummary(
-    instructorId: string
-  ): Promise<{ totalPayout: number; pendingPayout: number }>;
+
   getPaidOrderDetails(instructorId: string, filter?: any): Promise<any[]>;
+  getRevenueByPeriod(matchStage: any, groupBy: string): Promise<any[]>;
+  getOrderDetails(matchStage: any): Promise<any[]>;
+  getReportData(matchStage: any): Promise<any>;
 }

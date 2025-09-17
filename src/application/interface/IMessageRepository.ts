@@ -1,14 +1,18 @@
-import { IMessage } from "../../infrastructure/database/models/MessageModel";
+import { MessageEntity } from "../../domain/entities/Message";
+import { IBaseRepo } from "./IBaseRepository";
 
-export interface IMessageRepository {
-  createMessage(data: {
-    text: string;
-    sender: string;
-    chatId: string;
-  }): Promise<IMessage>;
-  
-  postMessage(data: object): Promise<IMessage>;
-  findMessagesByChatId(chatId: string): Promise<IMessage[] | null>;
+export interface IMessageRepository extends IBaseRepo<MessageEntity> {
+  // createMessage(data: {
+  //   text: string;
+  //   sender: string;
+  //   chatId: string;
+  // }): Promise<MessageEntity>;
+
+  // postMessage(data: object): Promise<MessageEntity>;
+
+  findByChatId(chatId: string): Promise<MessageEntity[] | null>;
+
   getCallHistory(instructorId: string): Promise<any>;
-  getAllMessages(chatId: string): Promise<IMessage[]>;
+
+  getAllMessages(chatId: string): Promise<MessageEntity[]>;
 }

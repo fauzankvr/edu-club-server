@@ -1,5 +1,5 @@
 import TransactionModel from "../database/models/Transaction";
-import PayoutRequestModel from "../database/models/Payout";
+import PayoutRequestModel from "../database/models/PayoutModel";
 
 
 export const requestPayoutService = async (

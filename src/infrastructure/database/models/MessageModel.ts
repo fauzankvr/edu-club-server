@@ -8,6 +8,7 @@ interface IReaction {
 
 // Define the IMessage interface
 export interface IMessage extends Document {
+  _id: string;
   text: string;
   sender: string;
   chatId: string;

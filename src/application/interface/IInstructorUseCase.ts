@@ -1,5 +1,6 @@
 import { IInstructor } from "../../infrastructure/database/models/InstructorModel";
 import { InstructorSignupDTO } from "../useCase/instructor.usecase"; 
+import { InstructorDto } from "./Dto/InstructorDto";
 
 export interface IInstructorUseCase {
   generateRefreshToken(refreshToken: string): Promise<string>;
@@ -23,7 +24,7 @@ export interface IInstructorUseCase {
     email: string,
     otp: string,
     password: string
-  ): Promise<IInstructor|null>;
+  ): Promise<InstructorDto|null>;
 
   loginInstructor(
     email: string,
@@ -34,9 +35,9 @@ export interface IInstructorUseCase {
     refreshToken: string;
   }>;
 
-  getProfile(email: string): Promise<IInstructor>;
+  getProfile(email: string): Promise<InstructorDto>;
 
-  updateProfile(email: string, updateData: object): Promise<IInstructor>;
+  updateProfile(email: string, updateData: object): Promise<InstructorDto>;
 
-  updatePaypalEmail(email: string, paypalEmail: string): Promise<IInstructor|null>;
+  updatePaypalEmail(email: string, paypalEmail: string): Promise<InstructorDto|null>;
 }

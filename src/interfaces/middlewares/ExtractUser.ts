@@ -19,6 +19,7 @@ export const verifyStudent = async (
 ): Promise<void> => {
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (!token) {
+    console.log("Token not found");
     res.status(StatusCodes.UNAUTHORIZED).json({ message: UNAUTHORIZED });
     return;
   }

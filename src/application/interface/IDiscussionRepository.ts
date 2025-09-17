@@ -1,20 +1,26 @@
-import { IDiscussion, IReply } from "./IDiscussion";
+import { DiscussionEntity } from "../../domain/entities/Discussion";
+import { ReplyEntity } from "../../domain/entities/Reply";
+import { IDiscussion } from "./IDiscussion";
 
-export interface IDiscussionRepository{
-    createDiscussion(
-        paypalOrderId: string,
-        data: Partial<IDiscussion>
-    ): Promise<any>
-    getAllDiscussions(paypalOrderId: string): Promise<IDiscussion[]>
-    findByIdDiscussion(id: string): Promise<IDiscussion | null>
-    updateReaction(
-        id: string,
-        data: Partial<IDiscussion>
-    ): Promise<IDiscussion | null>
-    updateReplay(
-        id: string,
-        data: Partial<IDiscussion>
-    ): Promise<IDiscussion | null>
-    findReplayById(id: string): Promise<IReply[]>
-    
+
+export interface IDiscussionRepository {
+  create(
+    data: Partial<DiscussionEntity>
+  ): Promise<DiscussionEntity | null>;
+
+  getAllDiscussions(paypalOrderId: string): Promise<DiscussionEntity[]>;
+
+  findByIdDiscussion(id: string): Promise<DiscussionEntity | null>;
+
+  updateReaction(
+    id: string,
+    data: Partial<DiscussionEntity>
+  ): Promise<DiscussionEntity | null>;
+
+  updateReplay(
+    id: string,
+    data: Partial<DiscussionEntity>
+  ): Promise<DiscussionEntity | null>;
+
+  findReplayById(id: string): Promise<ReplyEntity[]>;
 }

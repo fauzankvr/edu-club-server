@@ -15,9 +15,9 @@ export class NotificationUseCase implements INotificationUseCase {
   }
 
   async createNotification(data: {
-    type: string;
     title: string;
     message: string;
+    type: "course_update" | "quiz_reminder" | "message" | "achievement";
     studentId: string;
     instructorId: string;
   }) {

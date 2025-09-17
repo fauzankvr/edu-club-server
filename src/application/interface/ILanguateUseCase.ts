@@ -1,10 +1,15 @@
-import { ILanguage } from "../../infrastructure/database/models/LanguageModel";
+import { CreateLanguageRequestDTO, LanguageResponseDTO, UpdateLanguageRequestDTO } from "./Dto/LanguageDto";
 
 export interface ILanguageUseCase {
-  createLanguage(languageData: ILanguage): Promise<ILanguage>;
-  getAllLanguages(limit: number, skip: number): Promise<ILanguage[]>;
-  getNotBlockedLanguages(): Promise<ILanguage[]>;
-  updateLanguage(id: string, data: Partial<ILanguage>): Promise<ILanguage>;
-  toggleBlockStatus(id: string): Promise<ILanguage>;
   getTotalLanguagesCount(): Promise<number>;
+  createLanguage(
+    requestDTO: CreateLanguageRequestDTO
+  ): Promise<LanguageResponseDTO>;
+  getAllLanguages(limit: number, skip: number): Promise<LanguageResponseDTO[]>;
+  getNotBlockedLanguages(): Promise<LanguageResponseDTO[]>;
+  updateLanguage(
+    id: string,
+    requestDTO: UpdateLanguageRequestDTO
+  ): Promise<LanguageResponseDTO>;
+  toggleBlockStatus(id: string): Promise<LanguageResponseDTO>;
 }

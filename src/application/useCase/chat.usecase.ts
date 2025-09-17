@@ -1,24 +1,26 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { Chat } from "../../domain/entities/Chat";
-import { ChatRepository } from "../../infrastructure/repositories/chat.repository";
+import { ChatEntity } from "../../domain/entities/Chat";
 import { CreateChatDTO } from "../../interfaces/types/ChatDto";
 import { SendMessageDTO } from "../../interfaces/types/MessageDto";
-import { AiChatMessageModel } from "../../infrastructure/database/models/GeminiChatModel";
 import { IChatUseCase } from "../interface/IChatUseCase";
 import { IMessageRepository } from "../interface/IMessageRepository";
 import IStudentRepository from "../interface/IStudentRepository";
 import IInstructorRepository from "../interface/IInstructorRepository";
+import { IChatRepo } from "../interface/IChatRepository";
+import { IAichatRepository } from "../interface/IAicharRepository";
+import { AiChatEntity } from "../../domain/entities/Aichat";
 
 export class ChatUseCase implements IChatUseCase {
   constructor(
-    private _chatMessageRepository: ChatRepository,
+    private _chatMessageRepository: IChatRepo,
     private _messageRepository: IMessageRepository,
     private _userRepository: IStudentRepository,
-    private _instrucorRepository: IInstructorRepository 
+    private _instrucorRepository: IInstructorRepository,
+    private _aichatRepository: IAichatRepository
   ) {}
 
-  async createChat(chatData: CreateChatDTO): Promise<Chat> {
+  async createChat(chatData: CreateChatDTO): Promise<ChatEntity> {
     // Verify user exists
     const user = await this._userRepository.findById(chatData.userId);
     if (!user) {
@@ -33,7 +35,7 @@ export class ChatUseCase implements IChatUseCase {
       throw new Error("Instructor not found");
     }
 
-    const chat = await this._chatMessageRepository.createChat({
+    const chat = await this._chatMessageRepository.create({
       userId: chatData.userId,
       instructorId: chatData.instructorId,
     });
@@ -41,29 +43,29 @@ export class ChatUseCase implements IChatUseCase {
     return chat;
   }
 
-  async getUserChats(userId: string): Promise<Chat[]> {
+  async getUserChats(userId: string): Promise<ChatEntity[]> {
     // Verify user exists
     const user = await this._userRepository.findById(userId);
     if (!user) {
       throw new Error("User not found");
     }
 
-    return this._chatMessageRepository.findChatsByUserId(userId);
+    return this._chatMessageRepository.findByUser(userId);
   }
 
-  async getInstructorChats(instructorId: string): Promise<Chat[]> {
+  async getInstructorChats(instructorId: string): Promise<ChatEntity[]> {
     // Verify instructor exists
     const instructor = await this._instrucorRepository.findById(instructorId);
     if (!instructor) {
       throw new Error("Instructor not found");
     }
 
-    return this._chatMessageRepository.findChatsByInstructorId(instructorId);
+    return this._chatMessageRepository.findByInstructor(instructorId);
   }
 
   async sendMessage(messageData: SendMessageDTO): Promise<any> {
     // Verify chat exists
-    const chat = await this._chatMessageRepository.findChatById(
+    const chat = await this._chatMessageRepository.findById(
       messageData.chatId
     );
     if (!chat) {
@@ -71,7 +73,7 @@ export class ChatUseCase implements IChatUseCase {
     }
 
     // Create message
-    const message = await this._messageRepository.createMessage({
+    const message = await this._messageRepository.create({
       text: messageData.text,
       sender: messageData.sender,
       chatId: messageData.chatId,
@@ -87,13 +89,13 @@ export class ChatUseCase implements IChatUseCase {
 
   async getChatMessages(chatId: string): Promise<any> {
     // Verify chat exists
-    const chat = await this._chatMessageRepository.findChatById(chatId);
+    const chat = await this._chatMessageRepository.findById(chatId);
     if (!chat) {
       throw new Error("Chat not found");
     }
 
     // Get messages
-    return await this._messageRepository.findMessagesByChatId(chatId);
+    return await this._messageRepository.findByChatId(chatId);
   }
 
   postMessage(chatId: string, text: string, id: string): Promise<any> {
@@ -102,15 +104,16 @@ export class ChatUseCase implements IChatUseCase {
       sender: id,
       chatId,
     };
-    const chat = this._messageRepository.postMessage(data);
+    const chat = this._messageRepository.create(data);
     if (!chat) {
       throw new Error("Failed to post message");
     }
     return chat;
   }
 
-  async getAllChats(id: string) {
-    const chats = await this._chatMessageRepository.getAllChats(id);
+  async getAllChats(id: string): Promise<ChatEntity> {
+   
+    const chats = await this._chatMessageRepository.findById(id);
     if (!chats) {
       throw new Error("Failed to retrieve chats");
     }
@@ -126,8 +129,8 @@ export class ChatUseCase implements IChatUseCase {
     return messages;
   }
 
-  async getChatById(id: string) {
-    const chat = await AiChatMessageModel.findById(id).lean();
+  async getChatById(id: string): Promise<any> {
+    const chat = await this._aichatRepository.findByCourseId(id)
     if (!chat) {
       throw new Error("Chat not found");
     }
@@ -148,14 +151,16 @@ export class ChatUseCase implements IChatUseCase {
     const result = await chat.sendMessage(
       `${message} Respond in plain text only (no formatting, no markdown) and peragraph vice  `
     );
-    console.log(result.response.text);
+  
     const responseText = result.response.text();
-    await AiChatMessageModel.create({
+    const AiChat = new AiChatEntity(
       studentId,
       courseId,
-      text: message,
-      reply: responseText,
-    });
+      message,
+      responseText,
+      new Date()
+    )
+    await this._aichatRepository.create(AiChat);
     return responseText;
   }
   async getCallHistory(id: string) {

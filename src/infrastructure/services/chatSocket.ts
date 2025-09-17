@@ -10,7 +10,7 @@ import {
 import { INotification } from "../database/models/NotificationModel";
 
 interface Message {
-  _id?: string;
+    id?: string;
   chatId: string;
   sender: string;
   text: string;
@@ -170,7 +170,7 @@ export const setupChatSocket = (io: Server) => {
           });
 
           const messageToSend: Message = {
-            _id: savedMessage.id.toString(),
+            id: savedMessage.id.toString(),
             chatId: savedMessage.chatId.toString(),
             sender: savedMessage.sender.toString(),
             text: savedMessage.text,
@@ -218,7 +218,7 @@ export const setupChatSocket = (io: Server) => {
             { $addToSet: { seenBy: userId } }
           );
           const updatedMessage: Message = {
-            _id: message.id.toString(),
+            id: message.id.toString(),
             chatId: message.chatId.toString(),
             text: message.text,
             sender: message.sender.toString(),
@@ -230,6 +230,7 @@ export const setupChatSocket = (io: Server) => {
               reaction: r.reaction,
             })),  
           };
+          console.log("updatedd...", updatedMessage);
           io.to(chatId).emit("messageUpdated", updatedMessage);
           await updateUnseenCount(chatId);
         } catch (error) {
@@ -307,7 +308,7 @@ export const setupChatSocket = (io: Server) => {
           await message.save();
 
           const updatedMessage: Message = {
-            _id: message.id.toString(),
+            id: message.id.toString(),
             chatId: message.chatId.toString(),
             text: message.text,
             sender: message.sender.toString(),

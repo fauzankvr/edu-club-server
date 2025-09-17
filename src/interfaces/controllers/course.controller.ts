@@ -193,6 +193,7 @@ export class CourseController {
   async getFullCourse(req: Request, res: Response): Promise<void> {
     try {
       const { orderId } = req.params;
+      console.log("hrererer")
       const course = await this._courseUseCase.getCourseByOrderId(orderId);
       if (!course) {
         res
@@ -200,7 +201,7 @@ export class CourseController {
           .json(errorResponse(FAILED_COURSE_FETCH));
         return;
       }
-      const id = course._id.toString();
+      const id = course.id.toString();
       const curriculum = await this._courseUseCase.getCurriculam(id);
       res
         .status(StatusCodes.OK)
@@ -227,6 +228,7 @@ export class CourseController {
         course: updatedCourse,
       });
     } catch (error: any) {
+      console.log(error.message);
       return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
         message: FAILED_COURSE_UPDATE,
         error: error.message,

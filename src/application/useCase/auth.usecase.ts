@@ -2,7 +2,7 @@ import {
   generateRefreshToken,
   TokenPayload,
 } from "../../infrastructure/utility/GenarateToken";
-import { Student } from "../../domain/entities/Student";
+import { StudentEntity } from "../../domain/entities/Student";
 import { sendOtpEmail } from "../../infrastructure/services/EmailService";
 import {
   generateAccessToken,
@@ -27,10 +27,11 @@ import {
 import { IGoogleAuthService } from "../interface/IGoogleService";
 import { IOtpRepository } from "../interface/IotpRepository";
 import bcrypt from "bcrypt";
-import { Instructor } from "../../domain/entities/Instructor";
+
 import { IAuthUseCase } from "../interface/IAuthUseCase";
 import IStudentRepository from "../interface/IStudentRepository";
 import IInstructorRepository from "../interface/IInstructorRepository";
+import { InstructorEntity } from "../../domain/entities/Instructor";
 
 export class AuthUseCase implements IAuthUseCase {
   constructor(
@@ -50,10 +51,10 @@ export class AuthUseCase implements IAuthUseCase {
   }
 
   async signupAndSendOtp(email: string) {
-    const existing = await this._studentRepository.findStudentByEmail(email);
+    const existing = await this._studentRepository.findByEmail(email);
     if (existing) throw new Error(USER_ALREADY_EXISTS);
 
-    const lastOtp = await this._otpRepository.findOtp(email);
+    const lastOtp = await this._otpRepository.findByEmail(email);
     if (lastOtp && Date.now() - lastOtp.createdAt.getTime() < 3000) {
       throw new Error(OTP_WAIT);
     }
@@ -61,15 +62,15 @@ export class AuthUseCase implements IAuthUseCase {
     const otp = generateOtp();
     console.log(otp);
     await sendOtpEmail(email, otp);
-    await this._otpRepository.createOtp(email, otp);
+    await this._otpRepository.create(email, otp);
 
     return { message: OTP_SENT };
   }
 
   async SendOtp(email: string) {
-    const existing = await this._studentRepository.findStudentByEmail(email);
+    const existing = await this._studentRepository.findByEmail(email);
     if (!existing) throw new Error(STUDENT_NOT_FOUND);
-    const lastOtp = await this._otpRepository.findOtp(email);
+    const lastOtp = await this._otpRepository.findByEmail(email);
     if (lastOtp && Date.now() - lastOtp.createdAt.getTime() < 3000) {
       throw new Error(OTP_WAIT);
     }
@@ -77,18 +78,18 @@ export class AuthUseCase implements IAuthUseCase {
     const otp = generateOtp();
     console.log(otp);
     await sendOtpEmail(email, otp);
-    await this._otpRepository.createOtp(email, otp);
+    await this._otpRepository.create(email, otp);
 
     return { message: OTP_SENT };
   }
 
   async resetPassword(email: string, password: string) {
-    const existing = await this._studentRepository.findStudentByEmail(email);
+    const existing = await this._studentRepository.findByEmail(email);
     if (!existing) throw new Error(STUDENT_NOT_FOUND);
-
+    if (!existing?.id) throw new Error(STUDENT_NOT_FOUND);
     const hashedPassword = await bcrypt.hash(password, 10);
     const createdStudent = await this._studentRepository.updateById(
-      existing._id.toString(),
+      existing.id,
       { password: hashedPassword }
     );
     if (!createdStudent) {
@@ -105,7 +106,7 @@ export class AuthUseCase implements IAuthUseCase {
     otp: string,
     password: string
   ) {
-    const validOtp = await this._otpRepository.findOtp(email);
+    const validOtp = await this._otpRepository.findByEmail(email);
     otp = otp.trim().toString();
     if (!validOtp || otp !== validOtp.otp) throw new Error(INVALID_OTP);
 
@@ -119,7 +120,7 @@ export class AuthUseCase implements IAuthUseCase {
       isBlocked: false,
     });
 
-    await this._otpRepository.deleteOtp(email);
+    await this._otpRepository.deleteByEmail(email);
 
     if (!createdStudent) {
       throw new Error(SIGNUP_FAILED);
@@ -128,31 +129,36 @@ export class AuthUseCase implements IAuthUseCase {
   }
 
   async verifyOtp(email: string, otp: string) {
-    const validOtp = await this._otpRepository.findOtp(email);
+    const validOtp = await this._otpRepository.findByEmail(email);
     otp = otp.trim().toString();
     if (!validOtp || otp !== validOtp.otp) throw new Error(INVALID_OTP);
-    await this._otpRepository.deleteOtp(email);
+    await this._otpRepository.deleteByEmail(email);
     return { message: VALID_OTP };
   }
 
   async loginStudent(email: string, password: string) {
-    const studentData = await this._studentRepository.findSafeStudentByEmail(
+    const studentData = await this._studentRepository.findByEmail(
       email
     );
+    console.log(studentData)
     if (!studentData) {
       throw new Error(STUDENT_NOT_FOUND);
     }
+     if (!studentData?.password) {
+       throw new Error(STUDENT_NOT_FOUND);
+     }
     const isMatch = await bcrypt.compare(password, studentData.password);
+
     if (!isMatch) {
       throw new Error(INVALID_PASSWORD);
     }
     if (studentData.isBlocked) {
       throw new Error(USER_BLOCKED);
     }
-
+    if (!studentData.id) throw new Error(STUDENT_NOT_FOUND);
     const payload: TokenPayload = {
       email: studentData.email,
-      id: studentData._id.toString(),
+      id: studentData.id.toString(),
       role: "student",
     };
 
@@ -167,16 +173,16 @@ export class AuthUseCase implements IAuthUseCase {
     authService: IGoogleAuthService,
     role: string
   ) {
-    console.log(role);
     const googleUser = await authService.verifyToken(token);
     let TokenPayload: TokenPayload | undefined;
 
     if (role === "student") {
-      let student = await this._studentRepository.findStudentByEmail(
+      let student = await this._studentRepository.findByEmail(
         googleUser.email
       );
       if (!student) {
-        const newStudent = new Student(
+        const newStudent = new StudentEntity(
+          "",
           googleUser.email,
           "",
           false,
@@ -195,10 +201,10 @@ export class AuthUseCase implements IAuthUseCase {
       if (student.isBlocked) {
         throw new Error(USER_BLOCKED);
       }
-
+      if (!student.id) throw new Error(STUDENT_NOT_FOUND);
       TokenPayload = {
         email: student.email,
-        id: student._id.toString(),
+        id: student.id.toString(),
         role: "student",
       };
     } else if (role === "instructor") {
@@ -206,7 +212,7 @@ export class AuthUseCase implements IAuthUseCase {
         googleUser.email
       );
       if (!instructor) {
-        const newInstructor = new Instructor(
+        const newInstructor = new InstructorEntity(
           googleUser.email,
           "",
           false,
@@ -229,7 +235,7 @@ export class AuthUseCase implements IAuthUseCase {
 
       TokenPayload = {
         email: instructor.email,
-        id: instructor._id.toString(),
+        id: instructor.id,
         role: "instructor",
       };
     }

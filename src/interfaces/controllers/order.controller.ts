@@ -159,7 +159,7 @@ export class OrderController {
         };
       }
 
-      const data = await this._orderUseCase.getDashboardData(
+      const data = await this._orderUseCase.getDashboard(
         instructoremail,
         filter
       );

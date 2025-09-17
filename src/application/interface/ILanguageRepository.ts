@@ -1,10 +1,10 @@
 import { IBaseRepo } from "./IBaseRepository";
-import { ILanguage } from "../../infrastructure/database/models/LanguageModel";
-import { UpdateLanguageDto } from "./Dto/LanguageDto";
+import { LanguageEntity } from "../../domain/entities/Languate";
 
-export interface ILanguageRepository extends IBaseRepo<ILanguage> {
-  update(id: string, data: UpdateLanguageDto): Promise<ILanguage | null>;
-  findNotBlocked(): Promise<ILanguage[]>;
-  findAllLanguages(limit: number, skip: number): Promise<ILanguage[]>;
+export interface ILanguageRepository extends IBaseRepo<LanguageEntity> {
+  // update(id: string, data: UpdateLanguageDto): Promise<LanguageEntity | null>;
+  findByName: (name: string) => Promise<LanguageEntity | null>;
+  findNotBlocked(): Promise<LanguageEntity[]>;
+  findAllLanguages(limit: number, skip: number): Promise<LanguageEntity[]>;
   countDocuments(): Promise<number>;
 }

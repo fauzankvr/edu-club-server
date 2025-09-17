@@ -1,4 +1,14 @@
-export interface UpdateLanguageDto {
+export interface CreateLanguageRequestDTO {
+  name: string;
+}
+
+export interface UpdateLanguageRequestDTO {
   name?: string;
-  isBlocked?: boolean;
+}
+
+// Response DTO
+export interface LanguageResponseDTO {
+  id?: string;
+  name: string;
+  isBlocked: boolean;
 }

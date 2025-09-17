@@ -1,11 +1,8 @@
-import { IWishlist } from "../../infrastructure/database/models/WishlistModel";
+import { WishlistEntity } from "../../domain/entities/Wishlist";
 
 export interface IWishlistRepository {
-  findWishlist(studentId: string, courseId: string): Promise<IWishlist | null>;
-    addCourseToWishlist(studentId: string, courseId: string): Promise<IWishlist>;
-      removeCourseFromWishlist(
-        studentId: string,
-        courseId: string
-    ): Promise<IWishlist | null> 
-    getWishlist(studentEmail: string): Promise<IWishlist[]> 
+  find(studentId: string, courseId: string): Promise<WishlistEntity | null>;
+  add(studentId: string, courseId: string): Promise<WishlistEntity>;
+  remove(studentId: string, courseId: string): Promise<WishlistEntity | null>;
+  getByStudentId(studentId: string): Promise<WishlistEntity[]>;
 }

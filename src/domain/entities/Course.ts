@@ -1,34 +1,20 @@
+import { InstructorEntity } from "./Instructor";
 
-export class Course {
+export class CourseEntity {
   constructor(
-    public title: string,
-    public description: string,
-    public language: string,
-    public category: string,
-    public courseImageId: string,
-    public points: string[],
-    public price: number,
-    public discount: string | null = null,
-    public students: string[] = [],
-    public instructor:string
+    public readonly title: string,
+    public readonly description: string,
+    public readonly language: string,
+    public readonly category: string,
+    public readonly courseImageId: string,
+    public readonly points: string[],
+    public readonly price: number,
+    public readonly discount: string | null,
+    public readonly students: string[] | null,
+    public readonly instructor: string | null,
+    public  id?: string,
+    public readonly isBlocked?: boolean,
+    public averageRating?:number
   ) {}
-
-  hasDiscount(): boolean {
-    return !!this.discount;
-  }
-
-  addStudent(studentId: string): void {
-    if (!this.students.includes(studentId)) {
-      this.students.push(studentId);
-    }
-  }
-
-  isValid(): boolean {
-    return (
-      this.title.trim() !== "" &&
-      this.description.trim() !== "" &&
-      this.points.length > 0 &&
-      this.price > 0
-    );
-  }
 }
+

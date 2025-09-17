@@ -1,6 +1,8 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { ObjectId } from "mongoose";
 
 export interface IOrder extends Document {
+  _id: ObjectId;
   userId: string;
   courseId: string;
   quantity: number;

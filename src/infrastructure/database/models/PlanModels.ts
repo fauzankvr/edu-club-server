@@ -7,6 +7,7 @@ export interface IFeature {
 }
 
 export interface IPlan extends Document {
+  _id: Types.ObjectId;
   name: string;
   price: number;
   billingPeriod: "forever" | "year" | "month";

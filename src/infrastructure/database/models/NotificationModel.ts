@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface INotification extends Document {
+  _id: mongoose.Types.ObjectId;
   studentId: mongoose.Types.ObjectId;
   instructorId: mongoose.Types.ObjectId;
   type: "course_update" | "quiz_reminder" | "message" | "achievement";

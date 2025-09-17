@@ -190,7 +190,7 @@ export class ChatController {
       if (!InstructorData) {
         return res.status(404).json({ message: "Instructor not found" });
       }
-      const id = (await InstructorData)._id.toString();
+      const id = (await InstructorData).id.toString();
       const chats = await this._chatUseCase.getAllChats(id);
       res.status(200).json({ success: true, data: chats });
     } catch (error) {

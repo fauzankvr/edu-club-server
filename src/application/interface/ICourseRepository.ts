@@ -1,29 +1,25 @@
-import { Course } from "../../domain/entities/Course";
-import { ICourse } from "../../infrastructure/database/models/CourseModel";
-import { CreateCourseDTO } from "./Dto/courseDto"; 
+import { CourseEntity } from "../../domain/entities/Course";
+import { CreateCourseDTO } from "./Dto/courseDto";
 
 export interface FilteredCoursesResult {
-  courses: ICourse[]; // make sure you have a Course interface defined
+  courses: CourseEntity[];
   total: number;
   languages: string[];
   categories: string[];
 }
 
 export default interface ICourseRepository {
-  createCourse(courseData: CreateCourseDTO): Promise<ICourse>;
-  findCourseByTitle(
+  create(data: CourseEntity): Promise<CourseEntity>;
+  findByTitle(
     title: string,
     instructor: string,
     excludeId?: string
-  ): Promise<ICourse | null>;
-  getCourseById(id: string): Promise<ICourse | null>;
-  getBlockedCourseById(id: string): Promise<ICourse | null>;
-  getAllInstructorCourses(email: string): Promise<ICourse[]>;
-  updateCourseById(
-    id: string,
-    updateData: Partial<ICourse>
-  ): Promise<ICourse | null>;
-  getFilterdCourses(
+  ): Promise<CourseEntity | null>;
+  findById(id: string): Promise<CourseEntity | null>;
+  findBlockedById(id: string): Promise<CourseEntity | null>;
+  findByInstructor(email: string): Promise<CourseEntity[]>;
+  update(id: string, data: Partial<CourseEntity>): Promise<CourseEntity | null>;
+  filter(
     search: string,
     skip: number,
     limit: number,
@@ -34,7 +30,7 @@ export default interface ICourseRepository {
     priceMin?: string,
     priceMax?: string
   ): Promise<FilteredCoursesResult>;
-  getAllCourses(email: string): Promise<ICourse[]>;
-  getAdminAllCourses(limit: number, skip: number): Promise<ICourse[]>;
-  getAdminCourseCount(): Promise<number>;
+  findAllByEmail(email: string): Promise<CourseEntity[]>;
+  findAllAdmin(limit: number, skip: number): Promise<CourseEntity[]>;
+  count(): Promise<number>;
 }

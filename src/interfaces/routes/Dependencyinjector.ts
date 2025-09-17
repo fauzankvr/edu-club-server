@@ -21,7 +21,7 @@ import { ChatModel } from "../../infrastructure/database/models/ChatModel";
 import { MessageModel } from "../../infrastructure/database/models/MessageModel";
 import CurriculumModel from "../../infrastructure/database/models/CarriculamModel";
 import { WishlistModel } from "../../infrastructure/database/models/WishlistModel";
-import PayoutRequestModel from "../../infrastructure/database/models/Payout";
+import PayoutRequestModel from "../../infrastructure/database/models/PayoutModel";
 import NotesModel from "../../infrastructure/database/models/NotesModel";
 import ReviewModel from "../../infrastructure/database/models/ReviewModel";
 import { NotificationModel } from "../../infrastructure/database/models/NotificationModel";
@@ -51,7 +51,7 @@ import { InstructorRepository } from "../../infrastructure/repositories/Instruct
 import { AdminRepository } from "../../infrastructure/repositories/admin.repository";
 import { PlanCheckoutRepository } from "../../infrastructure/repositories/plancheckout.repository";
 import { PlanRepository } from "../../infrastructure/repositories/plan.repository";
-import OtpRepository from "../../infrastructure/repositories/otp.repository";
+
 import { CourseRepository } from "../../infrastructure/repositories/course.repositorie";
 import { OrderRepository } from "../../infrastructure/repositories/order.repository";
 import { CurriculumRepository } from "../../infrastructure/repositories/carriculum.repository";
@@ -62,8 +62,9 @@ import { WishlistRepository } from "../../infrastructure/repositories/whishlist.
 import { TransactionRepository } from "../../infrastructure/repositories/transaction.repository";
 import { ReviewRepository } from "../../infrastructure/repositories/review.repository";
 import { DiscussionRepository } from "../../infrastructure/repositories/discussion.repository";
-import { NotesRepository } from "../../infrastructure/repositories/notes.repository";
+import { NoteRepository } from "../../infrastructure/repositories/notes.repository";
 import { NotificationRepository } from "../../infrastructure/repositories/notification.repository";
+import { AichatRepository } from "../../infrastructure/repositories/Aichat.repository";
 
 // controller
 import CategoryController from "../controllers/category.controller";
@@ -81,35 +82,34 @@ import { NotesController } from "../controllers/notes.controller";
 import { NotificationController } from "../controllers/notification.controller";
 import AuthController from "../controllers/auth.controller";
 import { ReviewController } from "../controllers/review.controller";
+import { AiChatMessageModel } from "../../infrastructure/database/models/GeminiChatModel";
+import { OtpRepository } from "../../infrastructure/repositories/otp.repository";
+import { PayoutRepository } from "../../infrastructure/repositories/payout.repository";
 
 // Repository
 const categoryRepo = new CategoryRepository(CategoryModel);
 const languageRepo = new LanguageRepository(LanguageModel);
 const instructorRepo = new InstructorRepository(InstructorModal);
 const studentRepo = new StudentRepository(StudentModel);
-const adminRepo = new AdminRepository(
-  AdminModal,
-  OrderModel,
-  StudentModel,
-  CourseModel,
-  InstructorModal
-);
+const aiChatRepository = new AichatRepository(AiChatMessageModel)
+const adminRepo = new AdminRepository(AdminModal);
 const planRepo = new PlanRepository(PlanModel);
 const planCheckoutRepo = new PlanCheckoutRepository(PlanCheckoutModel);
 const otpRepo = new OtpRepository(OtpModel);
 const courseRepo = new CourseRepository(CourseModel);
-const orderRepo = new OrderRepository(OrderModel, PayoutRequestModel);
+const orderRepo = new OrderRepository(OrderModel);
 const curriculamRepo = new CurriculumRepository(CurriculumModel);
-const progressRepo = new ProgressRepository(ProgressModel, CurriculumModel);
-const chatRepo = new ChatRepository(ChatModel, MessageModel);
+const progressRepo = new ProgressRepository(ProgressModel);
+const chatRepo = new ChatRepository(ChatModel);
 const messageRepo = new MessageRepository(MessageModel);
 const whishlistRepo = new WishlistRepository(WishlistModel);
 const transacionRepo = new TransactionRepository(TransactionModel);
 const reviewRepo = new ReviewRepository(ReviewModel);
 const discussionRepo = new DiscussionRepository(DiscussionModel);
-const notesRepo = new NotesRepository(NotesModel);
+const notesRepo = new NoteRepository(NotesModel);
 const transactionRepo = new TransactionRepository(TransactionModel);
 const notificationRepo = new NotificationRepository(NotificationModel);
+const payoutRepo = new PayoutRepository()
 
 // const instructorRepo = new InstructorRepository(InstructorModal)
 
@@ -147,7 +147,7 @@ const notificationRepo = new NotificationRepository(NotificationModel);
 // UseCase
 const categoryUseCase = new CategoryUseCase(categoryRepo);
 const languageUseCase = new LanguageUseCase(languageRepo);
-const adminUseCase = new AdminUseCase(adminRepo, studentRepo, instructorRepo);
+const adminUseCase = new AdminUseCase(adminRepo, studentRepo, instructorRepo,payoutRepo,orderRepo,courseRepo);
 const planUseCase = new PlanUseCase(planRepo, planCheckoutRepo);
 const courseUseCase = new CourseUseCase(
   courseRepo,
@@ -160,14 +160,15 @@ const chatUseCase = new ChatUseCase(
   chatRepo,
   messageRepo,
   studentRepo,
-  instructorRepo
+  instructorRepo,
+  aiChatRepository
 );
 const studentUseCase = new StudentUseCase(studentRepo, whishlistRepo);
-const orderUseCase = new OrderUseCase(transacionRepo, orderRepo);
+const orderUseCase = new OrderUseCase(transacionRepo, orderRepo,studentRepo,instructorRepo,courseRepo,payoutRepo);
 const instructorUseCase = new InstructorUseCase(instructorRepo, otpRepo);
 const notificationUseCase = new NotificationUseCase(notificationRepo);
 const notesUseCase = new NotesUseCase(notesRepo, studentRepo);
-const discuccionUseCase = new DiscussionUseCase(discussionRepo);
+const discuccionUseCase = new DiscussionUseCase(discussionRepo,orderRepo);  
 const reviewUseCase = new ReviewUseCase(reviewRepo);
 const authUseCase = new AuthUseCase(studentRepo, otpRepo, instructorRepo);
 

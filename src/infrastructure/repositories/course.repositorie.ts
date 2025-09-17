@@ -1,21 +1,63 @@
 import mongoose, { Model } from "mongoose";
 import { ICourse } from "../database/models/CourseModel";
-import ICourseRepo from "../../application/interface/ICourseRepository";
-import { CreateCourseDTO } from "../../application/interface/Dto/courseDto"; 
+import ICourseRepository, {
+  FilteredCoursesResult,
+} from "../../application/interface/ICourseRepository";
+import { CreateCourseDTO } from "../../application/interface/Dto/courseDto";
 import { LanguageModel } from "../database/models/LanguageModel";
 import { CategoryModel } from "../database/models/CategoryModel";
+import { CourseEntity } from "../../domain/entities/Course";
+import { InstructorEntity } from "../../domain/entities/Instructor";
 
-export class CourseRepository implements ICourseRepo {
-  constructor(private _courseModel: Model<ICourse>) {}
+export class CourseRepository implements ICourseRepository {
+  constructor(private readonly _courseModel: Model<ICourse>) {}
 
-  async createCourse(courseData: CreateCourseDTO): Promise<ICourse> {
-    return await this._courseModel.create(courseData);
+  /** Map DB model → Entity */
+  private toEntity(course: ICourse): CourseEntity {
+    return new CourseEntity(
+      course.title,
+      course.description,
+      course.language,
+      course.category,
+      course.courseImageId,
+      course.points,
+      course.price,
+      course.discount,
+      course.students?.map((item) => item?.toString()) ?? [],
+      course.instructor,
+      course._id.toString(),
+      course.isBlocked
+    );
   }
-  getAdminCourseCount(): Promise<number> {
+
+  private toPopulatedEntity(course: any): CourseEntity {
+    return new CourseEntity(
+      course.title,
+      course.description,
+      course.language,
+      course.category,
+      course.courseImageId,
+      course.points,
+      course.price,
+      course.discount,
+      course.students,
+      course.instructor,
+      course._id?.toString(),
+      course.isBlocked,
+      course.averageRating
+    );
+  }
+
+  async create(data: CreateCourseDTO): Promise<CourseEntity> {
+    const course = await this._courseModel.create(data);
+    return this.toEntity(course);
+  }
+
+  async count(): Promise<number> {
     return this._courseModel.countDocuments();
   }
 
-  async getCourseById(id: string): Promise<any> {
+  async findById(id: string): Promise<CourseEntity | null> {
     const course = await this._courseModel.aggregate([
       {
         $match: {
@@ -28,48 +70,26 @@ export class CourseRepository implements ICourseRepo {
           from: "instructors",
           localField: "instructor",
           foreignField: "email",
-          as: "instructorDetails",
+          as: "instructor",
         },
       },
-      {
-        $unwind: {
-          path: "$instructorDetails",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
+      { $unwind: "$instructor" },
     ]);
-    return course[0] || null;
+
+    return course ? this.toPopulatedEntity(course[0]) : null;
   }
 
-  async getBlockedCourseById(id: string): Promise<any> {
-    const course = await this._courseModel.aggregate([
-      {
-        $match: {
-          _id: new mongoose.Types.ObjectId(id),
-        },
-      },
-      {
-        $lookup: {
-          from: "instructors",
-          localField: "instructor",
-          foreignField: "email",
-          as: "instructorDetails",
-        },
-      },
-      {
-        $unwind: {
-          path: "$instructorDetails",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-    ]);
-    return course[0] || null;
+  async findBlockedById(id: string): Promise<CourseEntity | null> {
+    const course = await this._courseModel.findById(id);
+    return course ? this.toEntity(course) : null;
   }
 
-  async getAllInstructorCourses(email: string): Promise<ICourse[]> {
-    return await this._courseModel.find({ instructor: email });
+  async findByInstructor(email: string): Promise<CourseEntity[]> {
+    const courses = await this._courseModel.find({ instructor: email });
+    return courses.map((c) => this.toEntity(c));
   }
-  async getFilterdCourses(
+
+  async filter(
     search: string,
     skip: number,
     limit: number,
@@ -79,47 +99,38 @@ export class CourseRepository implements ICourseRepo {
     rating?: string,
     priceMin?: string,
     priceMax?: string
-  ): Promise<{
-    courses: any[];
-    total: number;
-    languages: string[];
-    categories: string[];
-  }> {
+  ): Promise<FilteredCoursesResult> {
     const pipeline: any[] = [];
-    
-    if (search?.trim()) { 
+
+    // ----- Text / exact filters -----
+    if (search?.trim()) {
       const sanitizedSearch = search
         .trim()
         .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       pipeline.push({
-        $match: {
-          title: { $regex: sanitizedSearch, $options: "i" },
-        },
+        $match: { title: { $regex: sanitizedSearch, $options: "i" } },
       });
     }
-
-    if (category) {
+    if (category)
       pipeline.push({
         $match: { category: { $regex: `^${category}$`, $options: "i" } },
       });
-    }
-
-    if (language) {
+    if (language)
       pipeline.push({
         $match: { language: { $regex: `^${language}$`, $options: "i" } },
       });
-    }
 
-    const min = priceMin && priceMin !== "" ? Number(priceMin) : null;
-    const max = priceMax && priceMax !== "" ? Number(priceMax) : null;
-    if (min != null && max != null) {
+    const min = priceMin ? Number(priceMin) : null;
+    const max = priceMax ? Number(priceMax) : null;
+    if (min != null && max != null)
       pipeline.push({ $match: { price: { $gte: min, $lte: max } } });
-    } else if (min != null && max == null) {
-      pipeline.push({ $match: { price: { $gte: min } } });
-    } else if (max != null && min == null) {
-      pipeline.push({ $match: { price: { $lte: max } } });
-    }
+    else if (min != null) pipeline.push({ $match: { price: { $gte: min } } });
+    else if (max != null) pipeline.push({ $match: { price: { $lte: max } } });
 
+    // Always exclude blocked as early as possible
+    pipeline.push({ $match: { isBlocked: false } });
+
+    // ----- Reviews -> averageRating (hide raw reviews) -----
     pipeline.push(
       {
         $lookup: {
@@ -133,65 +144,34 @@ export class CourseRepository implements ICourseRepo {
         $addFields: {
           averageRating: { $ifNull: [{ $avg: "$reviews.rating" }, 0] },
         },
-      }
+      },
+      { $unset: "reviews" } // don't include full reviews in result
     );
 
-    const parsedRating = rating ? parseFloat(rating) : null;
-    if (parsedRating != null) {
+    // Rating filter (after computing averageRating)
+    if (rating) {
       pipeline.push({
-        $match: {
-          averageRating: { $gte: parsedRating },
-        },
+        $match: { averageRating: { $gte: parseFloat(rating) } },
       });
     }
-    pipeline.push({
-      $match: {
-        isBlocked: false,
-      },
-    });
 
-    const totalPipeline = [...pipeline, { $count: "total" }];
-    const totalResult = await this._courseModel.aggregate(totalPipeline);
-    const total = totalResult[0]?.total || 0;
-    //  pipeline.push({ $sort: { createdAt: -1 } });
+    // ----- Instructor lookup (by EMAIL, because Course.instructor is a string email) -----
     pipeline.push(
       {
         $lookup: {
           from: "instructors",
-          localField: "instructor",
-          foreignField: "email",
-          as: "instructorDetails",
+          let: { instEmail: "$instructor" }, // courses.instructor = email string
+          pipeline: [
+            { $match: { $expr: { $eq: ["$email", "$$instEmail"] } } },
+            { $project: { _id: 1, email: 1, fullName: 1, profileImage: 1 } },
+          ],
+          as: "instructor",
         },
       },
-      {
-        $unwind: {
-          path: "$instructorDetails",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $project: {
-          _id: 1,
-          title: 1,
-          description: 1,
-          category: 1,
-          language: 1,
-          price: 1,
-          discount: 1,
-          courseImageId: 1,
-          students: 1,
-          points: 1,
-          averageRating: 1,
-          instructor: {
-            _id: "$instructorDetails._id",
-            email: "$instructorDetails.email",
-            name: "$instructorDetails.fullName",
-            profileImage: "$instructorDetails.profileImage",
-          },
-        },
-      }
+      { $unwind: { path: "$instructor", preserveNullAndEmptyArrays: true } }
     );
 
+    // ----- Sorting -----
     if (sort) {
       const [field, order] = sort.split("-");
       const mongoField =
@@ -203,48 +183,79 @@ export class CourseRepository implements ICourseRepo {
           ? "averageRating"
           : null;
       if (mongoField) {
-        pipeline.push({
-          $sort: { [mongoField]: order === "asc" ? 1 : -1 },
-        });
+        pipeline.push({ $sort: { [mongoField]: order === "asc" ? 1 : -1 } });
       }
+    } else {
+      // Optional: stable default sort
+      pipeline.push({ $sort: { _id: -1 } });
     }
 
-    pipeline.push({ $skip: skip }, { $limit: limit });
-    
-    const courses = await this._courseModel.aggregate(pipeline);
+    // ----- Pagination + total in a single pass -----
+    const facetPipeline = [
+      ...pipeline,
+      {
+        $facet: {
+          data: [{ $skip: skip }, { $limit: limit }],
+          total: [{ $count: "total" }],
+        },
+      },
+      {
+        $project: {
+          courses: "$data",
+          total: { $ifNull: [{ $arrayElemAt: ["$total.total", 0] }, 0] },
+        },
+      },
+    ];
+
+    const [agg] = await this._courseModel.aggregate(facetPipeline);
+    let courses = agg?.courses ?? [];
+    const total = agg?.total ?? 0;
+    // Fetch filters (languages & categories)
     const languages = (
       await LanguageModel.find({ isBlocked: false }).select("name")
-    ).map((lang) => lang.name) || [" "];
+    ).map((l) => l.name);
     const categories = (
       await CategoryModel.find({ isBlocked: false }).select("name")
-    ).map((cat) => cat.name) || [" "];
+    ).map((c) => c.name);
 
-    return { courses, total, languages, categories };
+    // IMPORTANT: do NOT map through toEntity here (it will drop nested instructor/averageRating)
+    courses = courses.map((item: any) => this.toEntity(item));
+    return {
+      courses, // already has _id, instructor { _id, email, name, profileImage }, averageRating
+      total,
+      languages,
+      categories,
+    };
   }
 
-  async updateCourseById(
+  async update(
     id: string,
-    updateData: Partial<ICourse>
-  ): Promise<ICourse | null> {
-    return await this._courseModel.findByIdAndUpdate(
+    data: Partial<CourseEntity>
+  ): Promise<CourseEntity | null> {
+    console.log(data)
+    const updated = await this._courseModel.findByIdAndUpdate(
       id,
-      { $set: updateData },
+      { $set: data },
       { new: true }
     );
+    return updated ? this.toEntity(updated) : null;
   }
-  async getAllCourses(email: string): Promise<ICourse[]> {
-    return await this._courseModel.find({ instructor: email });
+
+  async findAllByEmail(email: string): Promise<CourseEntity[]> {
+    const courses = await this._courseModel.find({ instructor: email });
+    return courses.map((c) => this.toEntity(c));
   }
-  async getAdminAllCourses(limit: number, skip: number): Promise<ICourse[]> {
-    return await this._courseModel.find().limit(limit).skip(skip);
+
+  async findAllAdmin(limit: number, skip: number): Promise<CourseEntity[]> {
+    const courses = await this._courseModel.find().limit(limit).skip(skip);
+    return courses.map((c) => this.toEntity(c));
   }
-  async findCourseByTitle(
+
+  async findByTitle(
     title: string,
     instructor: string
-  ): Promise<ICourse | null> {
-    return await this._courseModel.findOne({
-      instructor: instructor,
-      title: title,
-    });
+  ): Promise<CourseEntity | null> {
+    const course = await this._courseModel.findOne({ instructor, title });
+    return course ? this.toEntity(course) : null;
   }
 }

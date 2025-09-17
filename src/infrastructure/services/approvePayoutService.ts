@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import * as paypal from "@paypal/payouts-sdk";
-import PayoutRequestModel from "../database/models/Payout";
+import PayoutRequestModel from "../database/models/PayoutModel";
 import TransactionModel from "../database/models/Transaction";
 
 // Setup sandbox or live environment

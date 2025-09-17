@@ -1,9 +1,8 @@
 
-
-export interface IBaseRepo<T> {
-  findAll(): Promise<T[]>;
-  findById(id: string): Promise<T | null>;
-  updateById(id: string, data: Partial<T>): Promise<T | null>;
-  create(data: Partial<T>): Promise<T>;
+export interface IBaseRepo<Entity> {
+  findAll(): Promise<Entity[]>;
+  findById(id: string): Promise<Entity | null>;
+  create(data: Partial<Entity>): Promise<Entity>;
+  updateById(id: string, data: Partial<Entity>): Promise<Entity | null>;
   deleteById(id: string): Promise<void>;
 }

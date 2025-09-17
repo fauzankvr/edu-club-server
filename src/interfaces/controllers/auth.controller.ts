@@ -53,6 +53,7 @@ class AuthController {
       }
 
       const result = await this._authUseCase.loginStudent(email, password);
+      console.log(result)
       res.cookie("refreshToken", result.refreshToken, {
         sameSite: "strict",
         httpOnly: true,

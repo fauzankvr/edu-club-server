@@ -1,5 +1,5 @@
-import { IPlanCheckout } from "../../infrastructure/database/models/PlanCheckoutModel";
+import { PlanCheckoutEntity } from "../../domain/entities/PlanCheckout";
 
 export interface IPlanCheckoutRepository {
-  findPlanByUserId(userId: string): Promise<IPlanCheckout | null>;
+  findByUserId(userId: string): Promise<PlanCheckoutEntity | null>;
 }

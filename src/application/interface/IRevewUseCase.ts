@@ -1,4 +1,4 @@
-import { IReview } from "../../infrastructure/database/models/ReviewModel";
+import { ReviewDto } from "./Dto/ReviewDto";
 
 export interface IReviewUseCase {
   addReview(
@@ -7,15 +7,15 @@ export interface IReviewUseCase {
     courseId: string,
     rating: number,
     comment: string
-  ): Promise<IReview>;
+  ): Promise<ReviewDto>;
 
-  getMyReview(courseId: string, studentEmail: string): Promise<IReview>;
+  getMyReview(courseId: string, studentEmail: string): Promise<ReviewDto>;
 
-  getReview(courseId: string): Promise<IReview[]>;
+  getReview(courseId: string): Promise<ReviewDto[]>;
 
   handleReviewReaction(
     reviewId: string,
     userEmail: string,
     type: "like" | "dislike"
-  ): Promise<IReview>;
+  ): Promise<ReviewDto>;
 }

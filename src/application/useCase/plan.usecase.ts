@@ -1,3 +1,4 @@
+import { FeatureEntity, PlanEntity } from "../../domain/entities/Plan";
 import { IPlan } from "../../infrastructure/database/models/PlanModels";
 import { IPlanCheckoutRepository } from "../interface/IPlanCheckoutRepository";
 import { IPlanRepository } from "../interface/IPlanRepository";
@@ -9,10 +10,27 @@ export class PlanUseCase implements IPlanUseCase {
     private _planCheckoutRepository: IPlanCheckoutRepository
   ) {}
   createPlan(plan: IPlan) {
-    return this._planRepository.create(plan);
+    const featureEntities: FeatureEntity[] = plan.features.map(
+      (f) => new FeatureEntity(f.description, f.icon, f.isAvailable ?? true)
+    );
+
+    const planData = new PlanEntity(
+      plan.id,
+      plan.name,
+      plan.price,
+      plan.billingPeriod,
+      featureEntities,
+      plan.isFeatured,
+      plan.isBlocked,
+      plan.createdAt,
+      plan.updatedAt
+    );
+
+    return this._planRepository.create(planData);
   }
+
   getPlans(limit: number, skip: number) {
-    return this._planRepository.findAllPlans(limit, skip);
+    return this._planRepository.list(limit, skip);
   }
   getPlan(id: string) {
     return this._planRepository.findById(id);
@@ -21,13 +39,27 @@ export class PlanUseCase implements IPlanUseCase {
     return this._planRepository.findNonBlocked();
   }
   updatePlans(id: string, data: IPlan) {
-    {
-      return this._planRepository.updateById(id, data);
-    }
+    const featureEntities: FeatureEntity[] = data.features.map(
+      (f) => new FeatureEntity(f.description, f.icon, f.isAvailable ?? true)
+    );
+
+    const planEntity = new PlanEntity(
+      id,
+      data.name,
+      data.price,
+      data.billingPeriod,
+      featureEntities,
+      data.isFeatured,
+      data.isBlocked,
+      data.createdAt,
+      new Date() // update updatedAt timestamp
+    );
+
+    return this._planRepository.updateById(id, planEntity);
   }
 
   getOrderedPlan(id: string) {
-    return this._planCheckoutRepository.findPlanByUserId(id);
+    return this._planCheckoutRepository.findByUserId(id);
   }
   async getTotalPlansCount(): Promise<number> {
     return this._planRepository.countDocuments();

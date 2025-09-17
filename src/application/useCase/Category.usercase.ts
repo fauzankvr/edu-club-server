@@ -1,53 +1,57 @@
 import { ICategoryRepository } from "../interface/ICategoryRepository";
-import { ICategory } from "../../infrastructure/database/models/CategoryModel";
+import { CategoryEntity } from "../../domain/entities/Category"; 
 import { ICategoryUseCase } from "../interface/ICategoryUseCase";
+import { CATEGORY_ALREADY_EXISTS, CATEGORY_NAME_REQUIRED, CATEGORY_NOT_FOUND } from "../../interfaces/constants/ErrorMessge";
 
 export class CategoryUseCase implements ICategoryUseCase {
-  constructor(private readonly _categoryRepository: ICategoryRepository) {}
+  constructor(private readonly categoryRepo: ICategoryRepository) {}
 
-  async createCategory(categoryData: ICategory): Promise<ICategory> {
-    const category = await this._categoryRepository.findByName(
-      categoryData.name
+  async createCategory(name: string): Promise<CategoryEntity> {
+    const existing = await this.categoryRepo.findByName(
+      name.trim().replace(/\s+/g, " ")
     );
-    if (category) throw new Error("Category already exists");
-    return this._categoryRepository.create(categoryData);
+    if (existing) throw new Error(CATEGORY_ALREADY_EXISTS);
+
+    const category = new CategoryEntity(name.trim().replace(/\s+/g, " "));
+    return this.categoryRepo.create(category);
   }
 
-  async getAllCategories(limit: number, skip: number): Promise<ICategory[]> {
-    return this._categoryRepository.findAllCategories(limit, skip);
+  async getAllCategories(
+    limit: number,
+    skip: number
+  ): Promise<CategoryEntity[]> {
+    return this.categoryRepo.find(limit, skip);
   }
+
   async getCategoryCount(): Promise<number> {
-    return this._categoryRepository.count();
-  }
-  async getNotBlockedCategories(): Promise<ICategory[]> {
-    return this._categoryRepository.findNotBlocked();
+    return this.categoryRepo.count();
   }
 
-  async toggleBlockStatus(id: string): Promise<ICategory> {
-    const category = await this._categoryRepository.findById(id);
-    if (!category) throw new Error("Category not found");
+  async getNotBlockedCategories(): Promise<CategoryEntity[]> {
+    return this.categoryRepo.findNotBlocked();
+  }
 
-    const updatedCategory = await this._categoryRepository.update(id, {
+  async toggleBlockStatus(id: string): Promise<CategoryEntity> {
+    const category = await this.categoryRepo.findById(id);
+    if (!category) throw new Error(CATEGORY_NOT_FOUND);
+    const updated = await this.categoryRepo.update(id, {
       isBlocked: !category.isBlocked,
     });
-    if (!updatedCategory) throw new Error("Category not found");
-    return updatedCategory;
+    if (!updated) throw new Error(CATEGORY_NOT_FOUND);
+
+    return updated;
   }
 
-  async updateCategory(
-    id: string,
-    categoryData: Partial<ICategory>
-  ): Promise<ICategory | null> {
-    if (!categoryData.name) throw new Error("Category name is required");
-    const data: Partial<ICategory> = {
-      name: categoryData.name,
-    };
-    const category = await this._categoryRepository.findByName(
-      categoryData.name
-    );
-    if (category) throw new Error("Category already exists");
-    const updateData = this._categoryRepository.update(id, data);
-    if (!updateData) throw new Error("Category not found");
-    return updateData;
+  async updateCategory(id: string, name: string): Promise<CategoryEntity> {
+    if (!name) throw new Error(CATEGORY_NAME_REQUIRED);
+
+    const existing = await this.categoryRepo.findByName(name);
+    if (existing) throw new Error(CATEGORY_ALREADY_EXISTS);
+
+    const category = new CategoryEntity(name);
+    const updated = await this.categoryRepo.update(id, category);
+    if (!updated) throw new Error(CATEGORY_NOT_FOUND);
+
+    return updated;
   }
 }

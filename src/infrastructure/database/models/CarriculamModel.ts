@@ -15,9 +15,12 @@ export interface ISection {
 }
 
 export interface ICurriculum extends Document {
-  courseId: mongoose.Types.ObjectId; 
-  instructor: string; 
+  _id: mongoose.Types.ObjectId;
+  courseId: mongoose.Types.ObjectId;
+  instructor: string;
   sections: ISection[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const LectureSchema: Schema = new Schema({

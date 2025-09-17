@@ -12,10 +12,13 @@ export interface ISectionProgress {
 }
 
 export interface IProgress extends Document {
+  _id: mongoose.Types.ObjectId;
   studentId: mongoose.Types.ObjectId;
   courseId: mongoose.Types.ObjectId;
   sections: ISectionProgress[];
-  completed: boolean; // True if all sections are completed
+  completed: boolean;
+  createdAt: Date;
+  updatedAt: Date; 
 }
 
 const LectureProgressSchema: Schema = new Schema({
@@ -33,7 +36,7 @@ const ProgressSchema: Schema = new Schema(
   {
     studentId: { type: Schema.Types.ObjectId, ref: "Students", required: true },
     courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
-    sections: [SectionProgressSchema],
+    sections: [SectionProgressSchema], 
     completed: { type: Boolean, default: false },
   },
   { timestamps: true }

@@ -1,18 +1,21 @@
-import { INotification } from "../../infrastructure/database/models/NotificationModel";
+import { NotificationEntity } from "../../domain/entities/Nofitication";
 
 export interface INotificationRepository {
   createNotification(data: {
     title: string;
     message: string;
-    type: string;
+    type: "course_update" | "quiz_reminder" | "message" | "achievement";
     studentId: string;
     instructorId: string;
-  }): Promise<INotification>;
+  }): Promise<NotificationEntity>;
 
-  getNotificationsByUserId(userId: string): Promise<INotification[]>;
+  getNotificationsByUserId(userId: string): Promise<NotificationEntity[]>;
 
-  markNotificationAsRead(notificationId: string): Promise<INotification | null>;
+  markNotificationAsRead(
+    notificationId: string
+  ): Promise<NotificationEntity | null>;
 
   clearAllNotifications(studentId: string): Promise<{ deletedCount?: number }>;
-  getAllNotification(instructorId:string): Promise<INotification[]>
+
+  getAllNotification(instructorId: string): Promise<NotificationEntity[]>;
 }

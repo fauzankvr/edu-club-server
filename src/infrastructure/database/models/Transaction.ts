@@ -1,6 +1,7 @@
 import { Schema, model, Types, Document } from "mongoose";
 
 export interface ITransaction extends Document {
+  _id: Types.ObjectId;
   studentId: Types.ObjectId;
   instructor: string;
   courseId: Types.ObjectId;

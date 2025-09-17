@@ -1,48 +1,91 @@
-import { Model } from "mongoose";
-import { ICurriculum } from "../database/models/CarriculamModel";
-import { ISection } from "../database/models/CarriculamModel"; 
-import ICurriculumRepo
-    from "../../application/interface/ICurriculamRepository"; 
-import mongoose from "mongoose";
-import { threeDSecureAuthenticationResponseSchema } from "@paypal/paypal-server-sdk/dist/types/models/threeDSecureAuthenticationResponse";
+import mongoose, { Model } from "mongoose";
+import { ICurriculum, ISection } from "../database/models/CarriculamModel";
+import ICurriculumRepo from "../../application/interface/ICurriculamRepository";
+import { CurriculumEntity, LectureEntity, SectionEntity } from "../../domain/entities/Curriculam";
 
 export class CurriculumRepository implements ICurriculumRepo {
-  constructor(public _curriculumModel: Model<ICurriculum>) {}
+  constructor(private readonly _curriculumModel: Model<ICurriculum>) {}
 
-  async saveCurriculum(
+  // ---------------- Mappers ----------------
+  private toEntity(curriculum: ICurriculum): CurriculumEntity {
+    const sections: SectionEntity[] = curriculum.sections.map((section) => ({
+      id: section._id.toString(),
+      title: section.title,
+      lectures: section.lectures.map((lec) => ({
+        id: lec._id.toString(),
+        title: lec.title,
+        videoPath: lec.videoPath,
+        pdfPath: lec.pdfPath,
+      })) as LectureEntity[],
+    }));
+
+    return new CurriculumEntity(
+      curriculum._id.toString(),
+      curriculum.courseId.toString(),
+      curriculum.instructor,
+      sections,
+      curriculum.createdAt,
+      curriculum.updatedAt
+    );
+  }
+
+  // ---------------- Repository Methods ----------------
+  async save(
     courseId: string,
     instructor: string,
     sections: ISection[]
-  ): Promise<boolean> {
-    const existing = await this._curriculumModel.findOne({ courseId });
-    if (existing) {
-      existing.sections = sections;
-      existing.instructor = instructor;
-      await existing.save();
+  ): Promise<CurriculumEntity> {
+    let doc = await this._curriculumModel.findOne({ courseId });
+    if (doc) {
+      doc.sections = sections;
+      doc.instructor = instructor;
+      await doc.save();
     } else {
-      const newCurriculum = new this._curriculumModel({
+      doc = new this._curriculumModel({
         courseId,
         instructor,
         sections,
       });
-      await newCurriculum.save();
+      await doc.save();
     }
-    return true;
+    return this.toEntity(doc);
   }
 
-  async getCurriculumByCourseId(courseId: string): Promise<ICurriculum | null> {
-    return this._curriculumModel.findOne({ courseId });
+  async findByCourseId(courseId: string): Promise<CurriculumEntity | null> {
+    const doc = await this._curriculumModel.findOne({ courseId });
+    return doc ? this.toEntity(doc) : null;
   }
 
-
-  async getCurriculumTopics(id: string): Promise<any> {
+  async findTopics(
+    id: string
+  ): Promise<Pick<CurriculumEntity, "sections"> | null> {
     const courseObjectId = new mongoose.Types.ObjectId(id);
-    return await this._curriculumModel.findOne(
-      { courseId: courseObjectId },
-      { "sections.title": 1, "sections.lectures.title": 1, _id: 0 }
-    ).lean();
-    }
-    getCarriculamTopics(courseId: string): Promise<ICurriculum|null> {
-        return this._curriculumModel.findOne({ courseId });
-    }
+    const doc = await this._curriculumModel
+      .findOne(
+        { courseId: courseObjectId },
+        { "sections.title": 1, "sections.lectures.title": 1 }
+      )
+      .lean();
+
+    if (!doc) return null;
+
+    // Map only sections + lectures titles
+    const sections: SectionEntity[] = doc.sections.map((section: any) => ({
+      id: section._id?.toString() || "",
+      title: section.title,
+      lectures: section.lectures.map((lec: any) => ({
+        id: lec._id?.toString() || "",
+        title: lec.title,
+      })) as LectureEntity[],
+    }));
+
+    return { sections };
+  }
+
+  async getCarriculamTopics(
+    courseId: string
+  ): Promise<CurriculumEntity | null> {
+    const doc = await this._curriculumModel.findOne({ courseId });
+    return doc ? this.toEntity(doc) : null;
+  }
 }

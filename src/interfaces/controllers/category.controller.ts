@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { CategoryUseCase } from "../../application/useCase/Category.usercase";
+// import { CategoryUseCase } from "../../application/useCase/Category.usercase";
 import { StatusCodes } from "../constants/statusCodes";
 import {
   errorResponse,
@@ -22,8 +22,8 @@ class CategoryController {
 
   async createCategory(req: Request, res: Response) {
     try {
-      const categoryData = req.body;
-      const result = await this._categoryUseCase.createCategory(categoryData);
+      const {name} = req.body;
+      const result = await this._categoryUseCase.createCategory(name);
 
       return res
         .status(StatusCodes.CREATED)
@@ -41,6 +41,12 @@ class CategoryController {
 
   async getAllCategories(req: Request, res: Response) {
     try {
+      if (req.query.status == "true") {
+        const result = await this._categoryUseCase.getNotBlockedCategories();
+        return res
+          .status(StatusCodes.OK)
+          .json(successResponse(CATEGORY_FETCH_SUCCESS, result));
+      }
       const page = req.query.page ? Number(req.query.page) : 1;
       const limit = req.query.limit ? Number(req.query.limit) : 10;
       const skip = (page - 1) * limit;
@@ -81,10 +87,10 @@ class CategoryController {
   async updateCategory(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const categoryData = req.body;
+      const {name} = req.body;
       const result = await this._categoryUseCase.updateCategory(
         id,
-        categoryData
+        name
       );
       return res
         .status(StatusCodes.OK)

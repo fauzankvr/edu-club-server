@@ -1,11 +1,9 @@
-import { Chat } from "../../domain/entities/Chat";
-import { Message } from "../../domain/entities/Message";
+import { ChatEntity } from "../../domain/entities/Chat";
 
 export interface IChatRepo {
-  // Chat-related methods
-  createChat(data: { userId: string; instructorId: string }): Promise<Chat>;
-  findChatById(id: string): Promise<Chat | null>;
-  findChatsByUserId(userId: string): Promise<Chat[]>;
-  findChatsByInstructorId(instructorId: string): Promise<Chat[]>;
-  updateChat(id: string, data: Partial<Chat>): Promise<Chat>;
+  create(data: { userId: string; instructorId: string }): Promise<ChatEntity>;
+  findById(id: string): Promise<ChatEntity[] | []>;
+  findByUser(userId: string): Promise<ChatEntity[]>;
+  findByInstructor(instructorId: string): Promise<ChatEntity[]>;
+  update(id: string, data: Partial<ChatEntity>): Promise<ChatEntity>;
 }

@@ -79,7 +79,7 @@ export class DiscussionController {
         throw new Error(INVALID_TOKEN);
       }
       const studentData = await this._studentUseCase.getProfile(student.email);
-      const userId = studentData._id;
+      const userId = studentData.id;
       if (!studentData || !userId) {
         throw new Error(STUDENT_DATA_NOT_FOUND);
       }

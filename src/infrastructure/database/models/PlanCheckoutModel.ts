@@ -3,6 +3,7 @@ import { Schema, model, Document, Types } from "mongoose";
 
 
 export interface IPlanCheckout extends Document {
+  _id: Types.ObjectId;
   userId: Types.ObjectId;
   planId: Types.ObjectId;
   paymentStatus: "pending" | "completed" | "failed" | "refunded";

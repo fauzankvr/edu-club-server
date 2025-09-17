@@ -1,7 +1,10 @@
-import { ICourse } from "../../infrastructure/database/models/CourseModel";
+// import { ICourse } from "../../infrastructure/database/models/CourseModel";
 import { ICurriculum, ISection } from "../../infrastructure/database/models/CarriculamModel";
-import { CreateCourseDTO } from "../interface/Dto/courseDto";
+import { CourseDto, CreateCourseDTO } from "../interface/Dto/courseDto";
 import { IProgress } from "../../infrastructure/database/models/ProgressModel";
+import { ProgressEntity } from "../../domain/entities/Progress";
+import { CurriculumDto } from "./Dto/CurriculamDto";
+import { CurriculumTopicsDto } from "./Dto/CurriculamTopic";
 
 export interface ICourseUseCase {
   getFilterdCourses(
@@ -15,24 +18,24 @@ export interface ICourseUseCase {
     priceMin?: string,
     priceMax?: string
   ): Promise<{
-    courses: ICourse[];
+    courses: CourseDto[];
     total: number;
     languages: string[];
     categories: string[];
   }>;
 
-  createNewCourse(data: CreateCourseDTO): Promise<ICourse>;
+  createNewCourse(data: CreateCourseDTO): Promise<CourseDto>;
 
-  getAllCourses(email: string): Promise<ICourse[]>;
+  getAllCourses(email: string): Promise<CourseDto[]>;
 
-  getAdminAllCourses(limit: number, skip: number): Promise<ICourse[]>;
+  getAdminAllCourses(limit: number, skip: number): Promise<CourseDto[]>;
   getAdminCourseCount(): Promise<number>;
 
-  getCourseById(id: string): Promise<ICourse>;
+  getCourseById(id: string): Promise<CourseDto>;
 
-  updateCourse(id: string, updateData: Partial<ICourse>): Promise<ICourse>;
+  updateCourse(id: string, updateData: Partial<CourseDto>): Promise<CourseDto>;
 
-  getCurriculam(id: string): Promise<ICurriculum>;
+  getCurriculam(id: string): Promise<CurriculumDto>;
 
   saveCurriculum(
     courseId: string,
@@ -42,30 +45,30 @@ export interface ICourseUseCase {
     pdfFiles: Express.Multer.File[]
   ): Promise<boolean>;
 
-  toggleCourseBlock(id: string): Promise<ICourse|null>;
+  toggleCourseBlock(id: string): Promise<CourseDto | null>;
 
-  getInstructorAllCourses(email: string): Promise<ICourse[]>;
+  getInstructorAllCourses(email: string): Promise<CourseDto[]>;
 
-  getCourseByOrderId(orderId: string): Promise<ICourse>;
+  getCourseByOrderId(orderId: string): Promise<CourseDto>;
 
-  getCurriculum(id: string): Promise<ICurriculum>;
+  getCurriculum(id: string): Promise<CurriculumDto>;
 
-  getCurriculumTopics(courseId: string): Promise<ICurriculum>;
+  getCurriculumTopics(courseId: string): Promise<CurriculumTopicsDto>;
 
-  getAllProgress(studentId: string): Promise<IProgress[] | null>;
+  getAllProgress(studentId: string): Promise<ProgressEntity[] | null>;
 
   getLessonProgress(
-    courseId: string,
-    studentId: string
-  ): Promise<IProgress | null>;
+    studentId: string,
+    courseId: string
+  ): Promise<ProgressEntity>;
 
   updateLessonProgress(
-    courseId: string,
     studentId: string,
+    courseId: string,
     sectionId: string,
     lectureId: string,
     progress: number
-  ): Promise<IProgress>;
+  ): Promise<ProgressEntity>;
 
   getEnrolledCourses(email: string): Promise<any>;
 }

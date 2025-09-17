@@ -125,8 +125,6 @@ export const NO_COURSES_AVAILABLE = "No courses available";
 export const DISCUSSION_NOT_FOUND = "Discussion not found";
 export const FAILED_DISCUSSIONS_FETCH = "Failed to fetch discussions";
 export const NOTE_NOT_FOUND = "Note not found";
-export const INVALID_NOTE_INDEX = "Invalid note index";
-
 export const APPLICATION_SUCCESS_WAIT_FOR_UPPROVAL = "Application submitted successfully! Please wait for admin approval."
 export const SUCCESS_PROFILE_FETCH = "Profile fetched successfully";
 export const SUCCESS_COURSES_FETCH = "Courses fetched successfully";
@@ -153,6 +151,8 @@ export const SUCCESS_NOTES_UPDATED = "Notes updated successfully";
 export const SUCCESS_NOTES_DELETED = "Notes deleted successfully";
 export const SUCCESS_NOTE_UPDATED = "Note updated successfully";
 export const SUCCESS_NOTE_DELETED = "Note deleted successfully";
+export const NOTES_NOT_FOUND = "Notes not found";
+export const NOTES_ALREDY_EXIST = "Notes already exist for this course";
 export const SUCCESS_SIGNUP = "Signup successful";
 export const SUCCESS_LOGIN = "Login successful";
 export const SUCCESS_LOGOUT = "Logged out successfully";
@@ -186,6 +186,11 @@ export const FAILED_NOTES_UPDATE = "Failed to update notes";
 export const FAILED_NOTES_DELETE = "Failed to delete notes";
 export const FAILED_NOTE_UPDATE = "Failed to update note";
 export const FAILED_NOTE_DELETE = "Failed to delete note";
+export const INVALID_NOTE_INDEX = "Invalid note index";
+export const EMPTY_NOTE_TEXT = "Note text cannot be empty";
+export const EMPTY_TITLE = "Title cannot be empty";
+export const UNAUTHORIZED_ACCESS = "Unauthorized access to notes";
+
 export const FAILED_SIGNUP = "Signup failed";
 export const FAILED_LOGIN = "Login failed";
 export const FAILED_LOGOUT = "Logout failed";
@@ -245,5 +250,8 @@ export const FAILED_NOTIFICATION_CLEAR = "Failed to clear notifications.";
 
 export const SUCCESS_APPROVED_INSTRUCTOR = "Instructor approved successfully.";
 export const FAILED_APPROVED_INSTRUCTOR = "Failed to approve instructor.";
-
+export const CANNOT_UPDTE_BLOCK_STUDENT = "Cannot update blocked student profile"
+export const STUDENT_UPDATE_FAILED = "Student update Failed"
 export const PAYPAL_EMAIL_REQUIRE = "PayPal email is required";
+
+export const INVALID_INPUT = "invalid input"

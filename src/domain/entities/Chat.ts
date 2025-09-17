@@ -1,8 +1,12 @@
-export interface Chat {
-  userId: string;
-  instructorId: string;
-  lastMessageAt?: Date;
-  createdAt?: Date;
-  updatedAt?: Date;
-  id?:string,
+export class ChatEntity {
+  constructor(
+    public userId: string,
+    public instructorId: string,
+    public userLastSeen?: Date,
+    public instructorLastSeen?: Date,
+    public lastMessage?: string,
+    public lastMessageTime?: Date,
+    public id?: string,
+    public instructor?:object
+  ) {}
 }

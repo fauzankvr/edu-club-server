@@ -1,13 +1,10 @@
-import { ICategory } from "../../infrastructure/database/models/CategoryModel";
+import { CategoryEntity } from "../../domain/entities/Category"; 
 
 export interface ICategoryUseCase {
-  createCategory(categoryData: ICategory): Promise<ICategory>;
-  getAllCategories(limit: number, skip: number,): Promise<ICategory[]>;
-  getNotBlockedCategories(): Promise<ICategory[]>;
-  toggleBlockStatus(id: string): Promise<ICategory>;
-  updateCategory(
-    id: string,
-    categoryData: Partial<ICategory>
-  ): Promise<ICategory | null>;
+  createCategory(name: string): Promise<CategoryEntity>;
+  getAllCategories(limit: number, skip: number): Promise<CategoryEntity[]>;
+  getNotBlockedCategories(): Promise<CategoryEntity[]>;
+  toggleBlockStatus(id: string): Promise<CategoryEntity>;
+  updateCategory(id: string, name: string): Promise<CategoryEntity>;
   getCategoryCount(): Promise<number>;
 }

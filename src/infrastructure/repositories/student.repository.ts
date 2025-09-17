@@ -1,57 +1,66 @@
-import  { Model } from "mongoose";
-import  { IStudent } from "../database/models/StudentModel";
-import { BaseRepository } from "./base.repository"; 
-import IStudentRepository from "../../application/interface/IStudentRepository";
+  import { Model } from "mongoose";
+  import { BaseRepository } from "./base.repository";
+  import { IStudent } from "../database/models/StudentModel";
+  import { StudentEntity } from "../../domain/entities/Student";
+  import IStudentRepository from "../../application/interface/IStudentRepository";
 
-export class StudentRepository
-  extends BaseRepository<IStudent>
-  implements IStudentRepository
-{
-  constructor(private _studentModel: Model<IStudent>) {
-    super(_studentModel);
-  }
-
-  async findStudentByEmail(email: string): Promise<IStudent | null> {
-    return await this._studentModel
-      .findOne({ email })
-      .select(
-        "email isBlocked firstName lastName phone linkedInId githubId googleId profileImage createdAt updatedAt"
-      );
-  }
-
-  async findSafeStudentByEmail(email: string): Promise<IStudent | null> {
-    return await this._studentModel
-      .findOne({ email })
-      .select("email password isBlocked");
-  }
-
-  async updateProfileByEmail(
-    email: string,
-    updateData: object
-  ): Promise<boolean> {
-    const updated = await this._studentModel.findOneAndUpdate(
-      { email },
-      { $set: updateData },
-      { new: true, projection: "-password" }
-    );
-    return !!updated;
-  }
-
-  async getAllStudents(limit:number,skip:number): Promise<IStudent[]> {
-    return await this._studentModel.find({}).limit(limit).skip(skip).sort({ createdAt: -1 });
-  }
-  countAllStudents(): Promise<number> {
-    return this._studentModel.countDocuments();
-  }
-
-  async blockStudent(email: string): Promise<boolean> {
-    const student = await this._studentModel.findOne({ email });
-    if (student) {
-      student.isBlocked = !student.isBlocked;
-      await student.save();
-      return student.isBlocked;
+  export class StudentRepository
+    extends BaseRepository<IStudent, StudentEntity>
+    implements IStudentRepository
+  {
+    constructor(private _studentModel: Model<IStudent>) {
+      super(_studentModel, StudentRepository.toEntity);
     }
-    return false;
-  }
-}
 
+    // DB doc -> Entity mapper
+    private static toEntity(student: IStudent): StudentEntity {
+      return new StudentEntity(
+        student._id.toString(),
+        student.email,
+        student.password,
+        student.isBlocked,
+        student.firstName ?? "unknown",
+        student.lastName,
+        student.phone,
+        student.linkedInId,
+        student.githubId,
+        student.googleId,
+        student.profileImage,
+        student.createdAt,
+        student.updatedAt
+      );
+    }
+
+
+    async findByEmail(email: string): Promise<StudentEntity | null> {
+      const student = await this._studentModel.findOne({ email });
+      return student ? StudentRepository.toEntity(student) : null;
+    }
+
+    async updateProfile(
+      email: string,
+      updateData: Partial<StudentEntity>
+    ): Promise<StudentEntity | null> {
+      const updated = await this._studentModel.findOneAndUpdate(
+        { email },
+        { $set: updateData },
+        { new: true }
+      );
+      return updated ? StudentRepository.toEntity(updated) : null;
+    }
+
+    async list(limit: number, skip: number): Promise<StudentEntity[]> {
+      const students = await this._studentModel
+        .find({})
+        .limit(limit)
+        .skip(skip)
+        .sort({ createdAt: -1 });
+
+      return students.map(StudentRepository.toEntity);
+    }
+
+    async count(): Promise<number> {
+      return this._studentModel.countDocuments();
+    }
+
+  }

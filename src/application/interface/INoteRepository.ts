@@ -1,19 +1,33 @@
+import { NotesEntity } from "../../domain/entities/Note"; 
 
 export interface INoteRepository {
-  getNote(id: string, courseId: string): Promise<any>;
-  createNote(id: string, data: any): Promise<any>;
-  updateNotes(id: string, studentId: string, data: any): Promise<any>;
-  updateNoteTitle(
-    id: string,
+  find(studentId: string, courseId: string): Promise<NotesEntity[] | null>;
+  findByTitle(
+    studentId: string,
+    courseId: string,
+    title: string
+  ): Promise<NotesEntity | null>;
+  create(studentId: string, data: any): Promise<NotesEntity>;
+  addNote(
+    notesId: string,
+    studentId: string,
+    noteText: string
+  ): Promise<NotesEntity | null>;
+  updateTitle(
+    notesId: string,
     studentId: string,
     title: string
-  ): Promise<any>;
-  deleteNotes(id: string, studentId: string): Promise<any>;
+  ): Promise<NotesEntity | null>;
   updateNote(
-    id: string,
+    notesId: string,
     studentId: string,
     text: string,
     index: number
-  ): Promise<any>;
-  deleteNote(id: string, studentId: string, index: number): Promise<any>;
+  ): Promise<NotesEntity | null>;
+  delete(notesId: string, studentId: string): Promise<boolean>;
+  removeNote(
+    notesId: string,
+    studentId: string,
+    index: number
+  ): Promise<boolean>;
 }

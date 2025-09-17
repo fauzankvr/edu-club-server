@@ -1,8 +1,10 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IWishlist extends Document {
-    student: string;
+  student: string;
   course: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const WishlistSchema = new Schema<IWishlist>(

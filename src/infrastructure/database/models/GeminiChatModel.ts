@@ -1,6 +1,7 @@
 import { Schema, model, Document, Types } from "mongoose";
 
 export interface IAiChatMessage extends Document {
+  _id: Types.ObjectId;
   studentId: Types.ObjectId;
   courseId: Types.ObjectId;
   text: string;

@@ -1,114 +1,107 @@
 import { Model } from "mongoose";
-import { Chat } from "../../domain/entities/Chat";
+import { ChatEntity } from "../../domain/entities/Chat";
 import { IChat } from "../database/models/ChatModel";
 import { IChatRepo } from "../../application/interface/IChatRepository";
-import Instructor from "../database/models/InstructorModel";
-import { IMessage } from "../database/models/MessageModel";
+import mongoose from "mongoose";
 
 export class ChatRepository implements IChatRepo {
-  constructor(
-    private _chatModel: Model<IChat>,
-    private _messageModel: Model<IMessage>
-  ) {}
+  constructor(private _chatModel: Model<IChat>) {}
 
-  async getAllChats(id: string): Promise<any[]> {
-    const chats = await this._chatModel.aggregate([
+  // DB → Entity
+  private static toEntity(chat: IChat): ChatEntity {
+    return new ChatEntity(
+      chat.userId,
+      chat.instructorId,
+      chat.userLastSeen,
+      chat.instructorLastSeen,
+      chat.lastMessage,
+      chat.lastMessageTime,
+      chat._id?.toString()
+    );
+  }
+
+  // Entity → DB
+  private static toDatabase(entity: ChatEntity): Partial<IChat> {
+    return {
+      userId: entity.userId,
+      instructorId: entity.instructorId,
+      userLastSeen: entity.userLastSeen,
+      instructorLastSeen: entity.instructorLastSeen,
+      lastMessage: entity.lastMessage,
+      lastMessageTime: entity.lastMessageTime,
+    };
+  }
+
+  async create(data: {
+    userId: string;
+    instructorId: string;
+  }): Promise<ChatEntity> {
+    const chat = new this._chatModel(data);
+    await chat.save();
+    return ChatRepository.toEntity(chat.toObject());
+  }
+
+  // async findById(id: string): Promise<ChatEntity | null> {
+  //  const chat = await this._chatModel.aggregate([
+  //    { $match: { _id: new mongoose.Types.ObjectId(id) } },
+  //   //  {
+  //   //    $lookup: {
+  //   //      from: "instructors", // The target collection name
+  //   //      let: { instructorId: { $toObjectId: "$instructorId" } }, // Convert instructorId to ObjectId
+  //   //      pipeline: [{ $match: { $expr: { $eq: ["$_id", "$$instructorId"] } } }],
+  //   //      as: "instructor", // Output array field
+  //   //    },
+  //   //  },
+  //  ]);
+
+  //  return chat.length > 0 ? ChatRepository.toEntity(chat[0]) : null;
+  // }
+
+  async findById(id: string): Promise<ChatEntity[] | []> {
+    const chat = await this._chatModel.aggregate([
       { $match: { instructorId: id } },
-      {
-        $addFields: {
-          userIdObj: {
-            $convert: {
-              input: "$userId",
-              to: "objectId",
-              onError: null,
-              onNull: null,
-            },
-          },
-        },
-      },
       {
         $lookup: {
           from: "students",
-          localField: "userIdObj",
-          foreignField: "_id",
-          as: "studentDetails",
+          let: { userIdStr: "$userId" }, // userId is string in chats
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ["$_id", { $toObjectId: "$$userIdStr" }], // convert string -> ObjectId
+                },
+              },
+            },
+          ],
+          as: "userId",
         },
       },
-      {
-        $unwind: {
-          path: "$studentDetails",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        // 🔽 Sort by lastMessageTime in descending order
-        $sort: { lastMessageTime: -1 },
-      },
+      { $unwind: "$userId" },
     ]);
-
-    // Compute unread count for each chat
-    const chatsWithUnread = await Promise.all(
-      chats.map(async (chat) => {
-        const unreadCount = await this._messageModel.countDocuments({
-          chatId: chat._id.toString(),
-          seenBy: { $ne: id },
-        });
-        return { ...chat, unreadCount };
-      })
-    );
-
-    return chatsWithUnread;
+    return chat.length > 0 ? chat.map((item)=>ChatRepository.toEntity(item))  : [];
   }
 
-  async createChat(data: {
-    userId: string;
-    instructorId: string;
-  }): Promise<Chat> {
-    const chat = new this._chatModel(data);
-    await chat.save();
-    return chat.toObject();
-  }
-
-  async findChatById(id: string): Promise<Chat | null> {
-    return await this._chatModel.findById(id).lean();
-  }
-
-  async findChatsByUserId(userId: string): Promise<any[]> {
+  async findByUser(userId: string): Promise<ChatEntity[]> {
     const chats = await this._chatModel.find({ userId }).lean();
-
-    const instructorIds = [...new Set(chats.map((chat) => chat.instructorId))];
-
-    const instructors = await Instructor.find({
-      _id: { $in: instructorIds },
-    }).lean();
-
-    const instructorMap = new Map(
-      instructors.map((instr) => [instr._id.toString(), instr])
-    );
-
-    return chats.map((chat) => ({
-      ...chat,
-      instructor: instructorMap.get(chat.instructorId),
-    }));
+    return chats.map(ChatRepository.toEntity);
   }
 
-  async findChatsByInstructorId(instructorId: string): Promise<any[]> {
+  async findByInstructor(instructorId: string): Promise<ChatEntity[]> {
     const chats = await this._chatModel.find({ instructorId }).lean();
-    const instructor = await Instructor.findOne({
-      _id: instructorId,
-    }).lean();
-
-    return chats.map((chat) => ({
-      ...chat,
-      instructor,
-    }));
+    return chats.map(ChatRepository.toEntity);
   }
 
-  async updateChat(id: string, data: Partial<Chat>): Promise<Chat> {
+  async update(id: string, data: Partial<ChatEntity>): Promise<ChatEntity> {
     const chat = await this._chatModel
-    .findByIdAndUpdate(id, data, {
-      new: true,
-    }).lean();
-    return chat as Chat;
+      .findByIdAndUpdate(id, ChatRepository.toDatabase(data as ChatEntity), {
+        new: true,
+      })
+      .lean();
+
+    if (!chat) {
+      throw new Error("Chat not found");
+    }
+
+    return ChatRepository.toEntity(chat);
   }
 }

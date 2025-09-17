@@ -7,7 +7,7 @@ export interface IStudent extends Document {
   isBlocked: boolean;
   firstName?: string;
   lastName?: string;
-  phone?: number | null;
+  phone?: string | null;
   linkedInId?: string | null;
   githubId?: string | null;
   googleId?: string | null;
@@ -19,7 +19,7 @@ export interface IStudent extends Document {
 const StudentsSchema: Schema = new Schema<IStudent>(
   {
     email: { type: String, required: true, unique: true },
-    password: { type: String, select: false }, 
+    password: { type: String}, 
     isBlocked: { type: Boolean, default: false },
     firstName: { type: String, required: true, default: "unknown" },
     lastName: { type: String },

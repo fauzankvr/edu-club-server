@@ -17,16 +17,28 @@ import IStudentRepository from "../interface/IStudentRepository";
 import IInstructorRepository from "../interface/IInstructorRepository";
 import { generatePdfReport } from "../../infrastructure/utility/pdfGenerator";
 import { generateExcelReport } from "../../infrastructure/utility/exelGenerator";
+import { IPayoutRepository } from "../interface/IPayoutRepository";
+import { IOrderRepository } from "../interface/IOrderRepository";
+import { WeeklyStrategy } from "./Filter/WeeklyStrategy";
+import { YearlyStrategy } from "./Filter/YearlyStrategy";
+import { CustomStrategy } from "./Filter/CustomStrategy";
+import { IDateRangeStrategy } from "./Filter/IDateRangeStrategy";
+import { DashboardFilter } from "../interface/Dto/IDateStrategy";
+import ICourseRepository from "../interface/ICourseRepository";
+
 
 export class AdminUseCase implements IAdminUseCase {
   constructor(
     private _adminRepository: IAdminRepository,
     private _studentRepository: IStudentRepository,
-    private _instructorRepository: IInstructorRepository
+    private _instructorRepository: IInstructorRepository,
+    private _payoutRepository: IPayoutRepository,
+    private _orderRepository: IOrderRepository,
+    private _courseRepository: ICourseRepository
   ) {}
 
   async loginAdmin(email: string, password: string) {
-    const adminData = await this._adminRepository.findAdminByEmail(email);
+    const adminData = await this._adminRepository.findByEmail(email);
     if (!adminData) {
       throw new Error(INVALID_CREDENTIALS);
     }
@@ -49,10 +61,10 @@ export class AdminUseCase implements IAdminUseCase {
     };
   }
   countAllStudents(): Promise<number> {
-    return this._studentRepository.countAllStudents();
+    return this._studentRepository.count();
   }
   async findAllStudents(limit: number, skip: number) {
-    return await this._studentRepository.getAllStudents(limit, skip);
+    return await this._studentRepository.list(limit, skip);
   }
 
   async findAllTeachers() {
@@ -67,7 +79,7 @@ export class AdminUseCase implements IAdminUseCase {
     if (!instructor) {
       throw new Error(INSTRUCTOR_NOT_FOUND);
     }
-    const id = instructor._id.toString();
+    const id = instructor.id;
     const res = await this._instructorRepository.updateById(id, {
       isBlocked: !instructor.isBlocked,
     });
@@ -92,7 +104,7 @@ export class AdminUseCase implements IAdminUseCase {
     const hashedPassword = await bcrypt.hash(tempPassword, saltRounds);
 
     // 4. Update instructor fields
-    const id = instructor._id.toString();
+    const id = instructor.id;
     const res = await this._instructorRepository.updateById(id, {
       isBlocked: false, // unblock the user if needed
       isApproved: true,
@@ -111,31 +123,50 @@ export class AdminUseCase implements IAdminUseCase {
   }
 
   async blockStudent(email: string) {
-    const student = await this._studentRepository.findStudentByEmail(email);
+    const student = await this._studentRepository.findByEmail(email);
     if (!student) throw new Error(STUDENT_NOT_FOUND);
-    const update = await this._studentRepository.updateById(
-      student._id.toString(),
-      {
-        isBlocked: !student.isBlocked,
-      }
-    );
+    if (!student.id) throw new Error(STUDENT_NOT_FOUND);
+    const update = await this._studentRepository.updateById(student.id, {
+      isBlocked: !student.isBlocked,
+    });
 
     return update;
   }
 
   getPayouts = async () => {
-    const payouts = await this._adminRepository.getPayouts();
+    const payouts = await this._payoutRepository.getPayouts();
     if (!payouts) {
       throw new Error("No payouts found");
     }
     return payouts;
   };
 
-  async getDashboardData(filter?: {
-    type: "weekly" | "monthly" | "yearly" | "custom";
-    startDate?: Date;
-    endDate?: Date;
-  }) {
+  private getStrategy(filter?: DashboardFilter): IDateRangeStrategy {
+    if (!filter) return { getDateRange: () => ({}) };
+
+    switch (filter.type) {
+      case "weekly":
+        return new WeeklyStrategy();
+      case "yearly":
+        return new YearlyStrategy();
+      case "custom":
+        return new CustomStrategy(filter.startDate!, filter.endDate!);
+      default:
+        return { getDateRange: () => ({}) };
+    }
+  }
+
+  async getDashboardData(filter?: DashboardFilter) {
+    // Step 1: Get strategy
+    const strategy = this.getStrategy(filter);
+
+    // Step 2: Get date range from strategy
+    const dateRange = strategy.getDateRange();
+
+    // Step 3: Build your match stage
+    const matchStage = { status: "PAID", ...dateRange };
+
+    // Step 4: Call repositories
     const [
       totalRevenue,
       totalStudents,
@@ -144,14 +175,13 @@ export class AdminUseCase implements IAdminUseCase {
       revenueByPeriod,
       orderDetails,
     ] = await Promise.all([
-      this._adminRepository.getTotalRevenue(filter),
-      this._adminRepository.getTotalStudents(),
-      this._adminRepository.getTotalTeachers(),
-      this._adminRepository.getTotalCourses(),
-      this._adminRepository.getRevenueByPeriod(filter),
-      this._adminRepository.getOrderDetails(filter),
+      this._orderRepository.getTotalRevenue(matchStage),
+      this._studentRepository.count(),
+      this._instructorRepository.count(),
+      this._courseRepository.count(),
+      this._orderRepository.getRevenueByPeriod(matchStage, filter?.type || ""),
+      this._orderRepository.getOrderDetails(matchStage),
     ]);
-    console.log(revenueByPeriod);
 
     return {
       totalRevenue,
@@ -172,7 +202,11 @@ export class AdminUseCase implements IAdminUseCase {
     }
   ) {
     try {
-      const datas = await this._adminRepository.getReportData(filter);
+     const strategy = this.getStrategy(filter);
+
+      const { startDate, endDate } = strategy.getDateRange();
+      const matchStage = {status:"PAID", type:filter?.type,startDate:startDate,endDate:endDate};
+     const datas = await this._orderRepository.getReportData(matchStage);
       const total = datas.totalRevenue || 0;
       const data = datas.orders || [];
       const totalRevenue = Number(total);

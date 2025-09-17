@@ -6,7 +6,7 @@ export interface IChat extends Document {
   userLastSeen?: Date;
   instructorLastSeen?: Date;
   lastMessage?:  string ;
-  lastMessageTime?: Date ;
+  lastMessageTime?: Date;
 }
 
 const ChatSchema = new Schema<IChat>(

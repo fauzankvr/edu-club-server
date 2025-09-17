@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface ICallHistory extends Document {
+  _id: mongoose.Types.ObjectId;
   roomId: string;
   callerId: string;
   callerName: string;
