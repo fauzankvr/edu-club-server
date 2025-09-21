@@ -8,3 +8,14 @@ export interface CategoryDTO {
   isBlocked?: boolean;
 }
 
+export interface CreateCategoryDTO {
+  name: string;
+}
+
+export interface CategoryResponseDTO {
+  id: string;
+  name: string;
+  isBlocked: boolean;
+}
+
+

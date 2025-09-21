@@ -1,7 +1,8 @@
 import { CategoryEntity } from "../../domain/entities/Category"; 
+import { CreateCategoryDTO } from "./Dto/CatetoryDto";
 
 export interface ICategoryUseCase {
-  createCategory(name: string): Promise<CategoryEntity>;
+  createCategory(dto: CreateCategoryDTO): Promise<CategoryEntity>;
   getAllCategories(limit: number, skip: number): Promise<CategoryEntity[]>;
   getNotBlockedCategories(): Promise<CategoryEntity[]>;
   toggleBlockStatus(id: string): Promise<CategoryEntity>;

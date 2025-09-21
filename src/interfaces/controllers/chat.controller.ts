@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { CreateChatDTO } from "../types/ChatDto";
+import { ChatResponse, CreateChatDTO } from "../types/ChatDto";
 import { SendMessageDTO } from "../types/MessageDto";
 import { StatusCodes } from "../constants/statusCodes";
 import {
@@ -26,12 +26,13 @@ import { IAuthanticatedRequest } from "../middlewares/ExtractUser";
 import { AiChatMessageModel } from "../../infrastructure/database/models/GeminiChatModel";
 // import { IStudentUseCase } from "../../application/interface/IStudentUseCase";
 import { IChatUseCase } from "../../application/interface/IChatUseCase";
+import { ChatEntity } from "../../domain/entities/Chat";
 
 export class ChatController {
   constructor(
     private _chatUseCase: IChatUseCase,
     private _instructorUseCase: InstructorUseCase
-  ) {}
+  ) { }
 
   async createChat(req: Request, res: Response): Promise<void> {
     try {
@@ -233,7 +234,7 @@ export class ChatController {
           .status(StatusCodes.NOT_FOUND)
           .json({ message: "Instructor not found" });
       }
-      const id = (await InstructorData)._id.toString();
+      const id = (await InstructorData).id.toString();
       if (!instructor || typeof instructor === "string") {
         throw new Error("Invalid token payload: Email not found");
       }

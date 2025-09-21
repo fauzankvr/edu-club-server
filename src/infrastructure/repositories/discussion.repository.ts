@@ -25,7 +25,7 @@ const toReplyEntity = (reply: IReply): ReplyEntity => {
 const toDiscussionEntity = (doc: IDiscussion): DiscussionEntity => {
   return new DiscussionEntity(
     doc._id.toString(),
-    doc.studentId,
+    doc.studentId.toString(),
     doc.courseId,
     doc.text,
     doc.likes,
