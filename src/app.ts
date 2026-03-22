@@ -23,7 +23,7 @@ app.set("trust proxy", false);
 //  Proper CORS Configuration
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://educlub0.netlify.app","https://educlub.food"],
+    origin: ["http://localhost:5173", "https://educlub0.netlify.app", "https://educlub.food", "https://edu-club-five.vercel.app"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -35,7 +35,7 @@ app.use(express.static("uploads"));
 // app.set("trust proxy", true);
 
 const limiter = rateLimit({
-  windowMs: 2 * 60 * 1000, 
+  windowMs: 2 * 60 * 1000,
   max: 120,
   message: {
     success: false,
