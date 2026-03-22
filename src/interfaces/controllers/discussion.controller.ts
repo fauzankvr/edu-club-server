@@ -3,9 +3,9 @@ import { StatusCodes } from "../constants/statusCodes";
 import { errorResponse, successResponse } from "../../infrastructure/utility/ResponseCreator";
 import { FAILED_DISCUSSION_CREATE, FAILED_DISCUSSIONS_FETCH, FAILED_REPLIES_FETCH, FAILED_REPLY_ADD, INVALID_REACTION_TYPE, INVALID_TOKEN, MISSING_REPLY_TEXT, STUDENT_DATA_NOT_FOUND, SUCCESS_DISCUSSION_CREATED, SUCCESS_DISCUSSIONS_FETCH, SUCCESS_REPLIES_FETCH, SUCCESS_REPLY_ADDED } from "../constants/responseMessage";
 import { IAuthanticatedRequest } from "../middlewares/ExtractUser";
-import { IReply } from "../../application/interface/IDiscussion";
 import { IStudentUseCase } from "../../application/interface/IStudentUseCase";
 import { IDiscussionUseCase } from "../../application/interface/IDiscussionUseCase";
+import { ReplyDto } from "../../application/interface/Dto/DiscussionDto";
 
 
 export class DiscussionController {
@@ -91,16 +91,15 @@ export class DiscussionController {
           .json(errorResponse(MISSING_REPLY_TEXT));
         return;
       }
-      const reply: IReply = {
+      const reply = new ReplyDto(
+        "",
         discussionId,
-        userId,
+        userId!,
         text,
-        likes: 0,
-        dislikes: 0,
-        likedBy: [],
-        dislikedBy: [],
-        createdAt: new Date(),
-      };
+        0,
+        0,
+        new Date()
+      );
       const updatedDiscussion = await this._discussionUseCase.addReply(
         discussionId,
         reply

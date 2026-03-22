@@ -8,7 +8,7 @@ export interface IChatUseCase {
   createChat(chatData: CreateChatDTO): Promise<ChatEntity>;
   getUserChats(userId: string): Promise<ChatEntity[]>;
   getInstructorChats(instructorId: string): Promise<ChatEntity[]>;
-  getAllChats(id: string): Promise<ChatEntity>;
+  getAllChats(id: string): Promise<ChatEntity[] | []>;
   getChatById(id: string): Promise<ChatEntity>;
 
   // Message management

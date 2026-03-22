@@ -111,7 +111,7 @@ export class ChatUseCase implements IChatUseCase {
     return chat;
   }
 
-  async getAllChats(id: string): Promise<ChatEntity> {
+  async getAllChats(id: string): Promise<ChatEntity[] | []> {
    
     const chats = await this._chatMessageRepository.findById(id);
     if (!chats) {

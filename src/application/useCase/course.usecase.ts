@@ -139,7 +139,7 @@ export class CourseUseCase implements ICourseUseCase {
         );
       }
     }
-    if(!course.instructor||!course.instructor.email) throw new Error("Instructor is required");
+    if(!course.instructor) throw new Error("Instructor is required");
     const data = new CourseEntity(
       updateData.title ?? course.title,
       updateData.description ?? course.description,
@@ -150,7 +150,7 @@ export class CourseUseCase implements ICourseUseCase {
       updateData.price ?? course.price,
       updateData.discount ?? course.discount,
       updateData.students ?? course.students,
-      updateData.instructor ?? course.instructor?.email,
+      updateData.instructor ?? course.instructor,
       updateData.id ?? course.id
     );
 
