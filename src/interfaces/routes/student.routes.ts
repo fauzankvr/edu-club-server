@@ -45,16 +45,16 @@ router.get("/students/profile", verifyStudent, async (req, res) => {
   await studentController.getProfile(req, res);
 });
 
-// Courses
+// Courses  – specific routes MUST come before wildcard /:courseId
 router.get("/courses", async (req, res) => courseController.getAllCourses(req, res));
-router.get("/courses/order/:orderId", async (req, res) => courseController.getCourseByOrderId(req, res));
-router.get("/courses/:courseId", async (req, res) => courseController.getCourseById(req, res));
 router.get("/courses/enrolled", verifyStudent, async (req, res) => courseController.getEnrolledCourses(req, res));
+router.get("/courses/order/:orderId", async (req, res) => courseController.getCourseByOrderId(req, res));
+router.get("/courses/full/:orderId", async (req, res) => courseController.getFullCourse(req, res));
 router.get("/courses/:courseId/curriculum", async (req, res) => courseController.getCurriculum(req, res));
+router.get("/courses/:courseId", async (req, res) => courseController.getCourseById(req, res));
 router.get("/students/progress", verifyStudent, async (req, res) => courseController.getAllProgress(req, res));
 router.get("/students/:studentId/courses/:courseId/progress", async (req, res) => courseController.getLessonProgress(req, res));
 router.patch("/students/progress", async (req, res) => courseController.updateLessonProgress(req, res));
-router.get("/courses/full/:orderId", async (req, res) => courseController.getFullCourse(req, res));
 
 // Orders
 router.route("/students/orders")
